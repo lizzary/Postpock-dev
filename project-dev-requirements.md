@@ -135,7 +135,7 @@
 11. 本轮先完成全部ui的设计与绘制，所有数据直接硬编码在代码里即可，暂时不需要对接任何真实后端api
 
 
-字体，全局只能使用下面的这些字体，手动将字体ttf文件放在public文件夹中，不使用CDN：
+字体，全局只能使用下面的这些字体（字体文件位于package/frontend/font），手动将字体ttf文件放在public文件夹中，不使用CDN：
 1. 简体中文（全局）：[CyanoHao/Resource-Han-Rounded: Resource Han Rounded, a rounded font family derived from Source Han Sans.](https://github.com/CyanoHao/Resource-Han-Rounded)
 2. 简体中文（点缀时可用）：[lxgw/LxgwWenKai: An open-source Chinese font derived from Fontworks' Klee One. 一款开源中文字体，基于 FONTWORKS 出品字体 Klee One 衍生。](https://github.com/lxgw/LxgwWenKai)
 3. English：[Plus Jakarta Sans - Google Fonts](https://fonts.google.com/specimen/Plus+Jakarta+Sans?preview.script=Latn&query=Tokotype)
