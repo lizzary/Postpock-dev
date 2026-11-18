@@ -34,8 +34,9 @@
 .line { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .type { font-weight: 600; font-size: 13.5px; flex-shrink: 0; }
 .scope { display: inline-flex; align-items: center; gap: 0; min-width: 0; color: var(--ink-2); font-size: 13px; }
-.miniAv { margin-right: -4px; box-shadow: 0 0 0 1.5px var(--bg-raised); }
-.miniAv:last-of-type { margin-right: 6px; }
+.avStack { display: inline-flex; flex-shrink: 0; margin-right: 6px; }
+.miniAv { flex-shrink: 0; box-shadow: 0 0 0 1.5px var(--bg-raised); }
+.miniAv + .miniAv { margin-left: -4px; }
 .scopeText { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meta { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 12.5px; color: var(--ink-3); }
 .stage { color: var(--ink-2); }

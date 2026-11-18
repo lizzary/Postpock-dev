@@ -1,23 +1,21 @@
 // Bake every layer of the home-page Starry Night at S px/unit.
 // Returns [{ id, kind, ...placement, canvas }]: one static picture plus the small layers that move.
-import { Painter, litCanvas, vnoise, smoothstep } from './engine.js';
+import { Painter, litCanvas } from './engine.js';
 import {
   W, H, C0, COIL_R, COIL_F, RING_R0, RING_R1, RING_F, SMALL, MOON, STARS, CYP_REG,
 } from './composition.js';
 import {
   weaveTiles, paintGround, paintSky, paintHills, paintVillage, paintField, paintCoil, paintRing, paintStar,
-  paintFlare, paintMoonHalo, paintCrescent, buildCypress, paintCypress, windowGroup,
+  paintFlare, paintMoonHalo, paintCrescent, buildCypress, paintCypress, windowGroup, THIN,
 } from './paint.js';
 
-/** Sway phases of the cypress frames (a closed loop). */
-export const CYPRESS_FRAMES = 8;
 
 export function bakeStarry(S, onLayer) {
   const emit = (layer) => { onLayer(layer); };
 
   // ---- the static picture
   const P = new Painter(S, 0, 0, W, H);
-  P.thin = (x, y) => smoothstep(0.62, 0.8, vnoise(x / 70 + 3.1, y / 55, 33)) * (y < 430 ? 0.75 : 0.85);
+  P.thin = THIN;
   paintGround(P, weaveTiles(S));
   paintSky(P);
   paintHills(P);
@@ -47,20 +45,17 @@ export function bakeStarry(S, onLayer) {
     emit({ id: `flare${k}`, kind: 'flare', index: k, cx: st.x, cy: st.y, half: st.F, rate: -0.4 * st.dir, phase: k, canvas: disc(st.F, (D) => paintFlare(D, st)) });
   });
 
-  // ---- village windows that light up, group by group
+  // ---- village windows that light up, wave by wave
   [1, 2, 3].forEach((g) => {
     const wg = windowGroup(S, g);
-    emit({ id: `win${g}`, kind: 'window', group: g, x: wg.x0, y: wg.y0, w: wg.w, h: wg.h, canvas: litCanvas(wg.painter, { relief: 0.02 }) });
+    if (wg) emit({ id: `win${g}`, kind: 'window', group: g, x: wg.x0, y: wg.y0, w: wg.w, h: wg.h, canvas: litCanvas(wg.painter, { relief: 0.02 }) });
   });
 
-  // ---- the cypress: a short loop of sway frames (cross-faded on screen)
-  const list = buildCypress();
+  // ---- the cypress, painted upright once: the page bends it (idle sway, and a sway when the pointer brushes it)
   const Pc = new Painter(S, CYP_REG.x0, CYP_REG.y0, CYP_REG.w, CYP_REG.h);
-  for (let f = 0; f < CYPRESS_FRAMES; f++) {
-    Pc.clear();
-    paintCypress(Pc, list, (f / CYPRESS_FRAMES) * Math.PI * 2);
-    emit({ id: `cypress${f}`, kind: 'cypress', frame: f, x: CYP_REG.x0, y: CYP_REG.y0, w: CYP_REG.w, h: CYP_REG.h, canvas: litCanvas(Pc, { relief: 0.022 }) });
-  }
+  Pc.clear();
+  paintCypress(Pc, buildCypress(), 0, 0);
+  emit({ id: 'cypress', kind: 'cypress', x: CYP_REG.x0, y: CYP_REG.y0, w: CYP_REG.w, h: CYP_REG.h, canvas: litCanvas(Pc, { relief: 0.022 }) });
 }
 
 export const STAGE = { W, H };

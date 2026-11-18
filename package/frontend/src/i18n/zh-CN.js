@@ -22,7 +22,8 @@ export default {
     emptyTitle: '这里还是空的', emptyBody: '新增一位作者，或者连接平台后从同步页面选择要保存的作者。',
     emptyPlatform: '这个平台还没有作者',
     allPlatforms: '全部', platformIndex: '全部平台', findAuthor: '查找作者', findPlatform: '查找平台', seeAll: '查看全部 {n} 位',
-    sort: { recent: '最近更新', name: '按名字', posts: '文章最多' },
+    sort: { recent: '最近更新', name: '按名字', posts: '文章最多', custom: '自定义顺序' },
+    customOrder: '已切换为自定义顺序', dragHint: '拖动可调整平台顺序',
   },
   author: {
     statPosts: '文章', statFiles: '文件', statSize: '占用空间', posts: '文章', postCount: '{n} 篇文章', files: '{n} 个文件 · {size}', checkedAt: '{date}检查过同步状态', unsynced: '{n} 篇未同步',
@@ -59,7 +60,7 @@ export default {
   export: {
     title: '导出', homeTitle: '导出收藏', authorTitle: '导出作者文章',
     authors: '作者', addAuthors: '添加作者', outputDir: '导出到', chooseDir: '选择文件夹', dates: '发布日期',
-    custom: '自定义', presets: { today: '今天', d7: '最近 7 天', d30: '最近 30 天', month: '本月', year: '今年', all: '全部' },
+    kinds: { image: '图片', video: '视频', audio: '音频', project: '工程文件', document: '文档', archive: '压缩包', other: '其他' }, kindTypes: '{n}/{total} 种', kindFiles: '{n} 个文件', noTypes: '所选作者还没有文件', custom: '自定义', presets: { today: '今天', d7: '最近 7 天', d30: '最近 30 天', month: '本月', year: '今年', all: '全部' },
     pickRange: '选择开始和结束日期', dayPosts: '当天发布的 {n} 篇', fileTypes: '文件类型', fileName: '文件名',
     aggKeys: '聚合键', dataKeys: '数据键', customKeys: '{platform} 自定义键', customDisabled: '所选作者来自多个平台时不能使用平台自定义键',
     format: '格式', preview: '目录预览', perDir: '每个目录显示', moreFiles: '还有 {n} 个文件', noFiles: '没有符合条件的文件',

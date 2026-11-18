@@ -1,12 +1,14 @@
 import { ViewTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useOverlays } from '../../../app/shell.jsx';
+import { libraryActions } from '../../../bridge/index.js';
 import { Link, paths } from '../../../app/router.jsx';
 import { useT } from '../../../i18n/index.jsx';
 import { useFormat } from '../../lib/format.js';
 import { Icon } from '../../icons/Icon.jsx';
 import { Button, IconButton, Select } from '../../components/controls.jsx';
-import { Popover } from '../../components/overlay.jsx';
-import { Empty, StatusDot } from '../../components/feedback.jsx';
+import { Popover, Portal } from '../../components/overlay.jsx';
+import { Empty, StatusDot, toast } from '../../components/feedback.jsx';
+import { moveTo, useReorder } from '../../lib/useReorder.js';
 import { Avatar, Picture } from '../../components/media.jsx';
 import { PlatformMark } from '../../components/platform.jsx';
 import s from './Library.module.css';
@@ -21,6 +23,19 @@ const SORTS = {
   name: (a, b) => a.name.localeCompare(b.name),
   posts: (a, b) => b.postCount - a.postCount,
 };
+/** Sort one platform's authors; 'custom' follows the saved order, newcomers go last (most recent first). */
+function sortAuthors(list, sort, order) {
+  if (sort !== 'custom' || !order?.length) return [...list].sort(SORTS[sort] ?? SORTS.recent);
+  const at = new Map(order.map((id, i) => [id, i]));
+  return [...list].sort((a, b) => (at.get(a.id) ?? 1e9) - (at.get(b.id) ?? 1e9) || SORTS.recent(a, b));
+}
+const NAV_H = 64 + 54;   // the top bar and the sticky platform bar cover this much of the page
+
+/** The insertion line shown while dragging (in a portal: the sticky bars' backdrop filters would trap it). */
+function DropMarker({ marker }) {
+  if (!marker) return null;
+  return <Portal><span className={s.marker} style={{ left: marker.left, top: marker.top, width: marker.width, height: marker.height }} /></Portal>;
+}
 
 /** How many cards fit on one row of the library grid. */
 function useColumns(ref) {
@@ -38,19 +53,39 @@ export function Library({ home }) {
   const { open } = useOverlays();
   const [tab, setTabState] = useState(remembered.get);
   const [query, setQuery] = useState('');
-  const [sort, setSort] = useState('recent');
+  // sort + custom author order, and the platform order: both change at once and save in the background
+  const [viewLocal, setViewLocal] = useState(null);
+  const view = viewLocal ?? home.view ?? { sort: 'recent', authorOrder: {} };
+  const setView = (patch) => { const next = { ...view, ...patch }; setViewLocal(next); libraryActions.saveHomeView(next); };
+  const [orderLocal, setOrderLocal] = useState(null);
+  const platforms = useMemo(() => {
+    if (!orderLocal) return home.platforms;
+    const at = new Map(orderLocal.map((id, i) => [id, i]));
+    return home.platforms.map((p, i) => [p, at.get(p.id) ?? orderLocal.length + i]).sort((a, b) => a[1] - b[1]).map(([p]) => p);
+  }, [home.platforms, orderLocal]);
   const top = useRef(null);
   const body = useRef(null);
   const cols = useColumns(body);
 
   const groups = useMemo(() => {
     const q = norm(query.trim());
-    return home.platforms.map((p) => {
-      const all = home.authors.filter((a) => a.platformId === p.id);
-      const shown = (q && !norm(p.name).includes(q) ? all.filter((a) => norm(a.name).includes(q) || norm(a.handle).includes(q)) : all).sort(SORTS[sort]);
+    return platforms.map((p) => {
+      const all = sortAuthors(home.authors.filter((a) => a.platformId === p.id), view.sort, view.authorOrder?.[p.id]);
+      const shown = q && !norm(p.name).includes(q) ? all.filter((a) => norm(a.name).includes(q) || norm(a.handle).includes(q)) : all;
       return { platform: p, all, shown };
     }).filter((g) => g.all.length || g.platform.kind === 'custom');
-  }, [home, query, sort]);
+  }, [home.authors, platforms, query, view.sort, view.authorOrder]);
+
+  const reorderPlatforms = (id, index) => {
+    const ids = moveTo(groups.map((g) => g.platform.id), id, index);
+    const full = [...ids, ...platforms.map((p) => p.id).filter((x) => !ids.includes(x))];
+    setOrderLocal(full);
+    libraryActions.setPlatformOrder(full);
+  };
+  const reorderAuthors = (platformId, ids) => {
+    if (view.sort !== 'custom') toast(t('home.customOrder'), { icon: 'sort' });
+    setView({ sort: 'custom', authorOrder: { ...view.authorOrder, [platformId]: ids } });
+  };
 
   const current = groups.find((g) => g.platform.id === tab);
   useEffect(() => { if (tab !== 'all' && !current) setTabState('all'); }, [tab, current]);
@@ -78,11 +113,11 @@ export function Library({ home }) {
     <section className={s.library}>
       <div ref={top} />
       <Navigator groups={groups} tab={tab} setTab={setTab} total={home.authors.length} matched={searching ? total : null}
-        query={query} setQuery={setQuery} sort={sort} setSort={setSort} />
+        query={query} setQuery={setQuery} sort={view.sort} setSort={(sort) => setView({ sort })} onReorder={reorderPlatforms} />
       <div ref={body} className={s.wings}>
         {current
-          ? <Wing group={current} full />
-          : visible.map((g, gi) => <Wing key={g.platform.id} group={g} index={gi} limit={searching ? null : cols} onMore={() => setTab(g.platform.id)} />)}
+          ? <Wing group={current} full onReorder={reorderAuthors} />
+          : visible.map((g, gi) => <Wing key={g.platform.id} group={g} index={gi} limit={searching ? null : cols} onMore={() => setTab(g.platform.id)} onReorder={reorderAuthors} />)}
         {!visible.length && <Empty compact title={t('picker.none')} />}
       </div>
     </section>
@@ -90,7 +125,7 @@ export function Library({ home }) {
 }
 
 /** Sticky platform tabs + the jump index, search, sort and "new platform". */
-function Navigator({ groups, tab, setTab, total, matched, query, setQuery, sort, setSort }) {
+function Navigator({ groups, tab, setTab, total, matched, query, setQuery, sort, setSort, onReorder }) {
   const t = useT();
   const { open } = useOverlays();
   const strip = useRef(null);
@@ -106,6 +141,7 @@ function Navigator({ groups, tab, setTab, total, matched, query, setQuery, sort,
   }, [groups.length]);
   useEffect(() => { strip.current?.querySelector('[data-on="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); }, [tab]);
   const nudge = (d) => strip.current.scrollBy({ left: d * strip.current.clientWidth * 0.7, behavior: 'smooth' });
+  const drag = useReorder({ listRef: strip, scrollRef: strip, mode: 'row', axis: 'x', onDrop: onReorder });
 
   return (
     <div className={s.nav}>
@@ -117,7 +153,7 @@ function Navigator({ groups, tab, setTab, total, matched, query, setQuery, sort,
           </button>
           {groups.map((g) => (
             <button key={g.platform.id} type="button" role="tab" aria-selected={tab === g.platform.id} data-on={tab === g.platform.id} data-empty={matched != null && !g.shown.length}
-              className={s.tab} onClick={() => setTab(g.platform.id)}>
+              className={s.tab} onClick={() => setTab(g.platform.id)} {...drag.handle(g.platform.id)}>
               <PlatformMark platform={g.platform} size={16} />{g.platform.name}
               <span className={`${s.tabCount} num`}>{matched != null ? g.shown.length : g.all.length}</span>
             </button>
@@ -127,8 +163,9 @@ function Navigator({ groups, tab, setTab, total, matched, query, setQuery, sort,
       </div>
       <IconButton ref={indexBtn} icon="layers" label={t('home.platformIndex')} active={index} onClick={() => setIndex((v) => !v)} />
       <Popover open={index} onClose={() => setIndex(false)} anchor={indexBtn} placement="bottom-end" label={t('home.platformIndex')} trapFocus={false}>
-        <PlatformIndex groups={groups} tab={tab} onPick={(id) => { setTab(id); setIndex(false); }} />
+        <PlatformIndex groups={groups} tab={tab} onPick={(id) => { setTab(id); setIndex(false); }} onReorder={onReorder} />
       </Popover>
+      <DropMarker marker={drag.marker} />
       <span className={s.navSep} />
       <label className={s.find}>
         <Icon name="search" size={15} />
@@ -136,26 +173,29 @@ function Navigator({ groups, tab, setTab, total, matched, query, setQuery, sort,
         {query && <button type="button" onClick={() => setQuery('')} aria-label={t('common.clear')}><Icon name="close" size={12} /></button>}
       </label>
       <Select size="sm" icon="sort" value={sort} onChange={setSort} label={t('author.sort.label')}
-        options={[{ value: 'recent', label: t('home.sort.recent') }, { value: 'name', label: t('home.sort.name') }, { value: 'posts', label: t('home.sort.posts') }]} />
+        options={['recent', 'name', 'posts', 'custom'].map((v) => ({ value: v, label: t(`home.sort.${v}`) }))} />
       <IconButton icon="plus" label={t('home.addPlatform')} onClick={() => open('newPlatform')} />
     </div>
   );
 }
 
 /** Every platform at a glance, searchable: the quickest way to one of dozens. */
-function PlatformIndex({ groups, tab, onPick }) {
+function PlatformIndex({ groups, tab, onPick, onReorder }) {
   const t = useT();
   const [q, setQ] = useState('');
+  const grid = useRef(null);
   const shown = groups.filter((g) => !q || norm(g.platform.name).includes(norm(q)));
+  // reordering needs the whole list in view, so it pauses while a search narrows it
+  const drag = useReorder({ listRef: grid, scrollRef: grid, mode: 'grid', axis: 'y', onDrop: onReorder, disabled: !!q });
   return (
     <div className={s.index}>
       <label className={s.indexSearch}>
         <Icon name="search" size={14} />
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('home.findPlatform')} autoFocus />
       </label>
-      <div className={s.indexGrid}>
+      <div ref={grid} className={s.indexGrid}>
         {shown.map((g) => (
-          <button key={g.platform.id} type="button" className={s.indexItem} data-on={tab === g.platform.id} onClick={() => onPick(g.platform.id)}>
+          <button key={g.platform.id} type="button" className={s.indexItem} data-on={tab === g.platform.id} onClick={() => onPick(g.platform.id)} {...drag.handle(g.platform.id)}>
             <PlatformMark platform={g.platform} size={22} />
             <span className={s.indexText}>
               <span className={s.indexName}>{g.platform.name}</span>
@@ -167,17 +207,31 @@ function PlatformIndex({ groups, tab, onPick }) {
           </button>
         ))}
       </div>
+      {!q && <div className={s.indexHint}><Icon name="grip" size={13} />{t('home.dragHint')}</div>}
+      <DropMarker marker={drag.marker} />
     </div>
   );
 }
 
 /** One platform: a header, then its authors (one row in the overview, all of them on its own tab). */
-function Wing({ group, full, limit, onMore, index = 0 }) {
+function Wing({ group, full, limit, onMore, onReorder, index = 0 }) {
   const t = useT();
   const { open } = useOverlays();
+  const gridRef = useRef(null);
   const { platform: p, shown, all } = group;
   const cards = limit ? shown.slice(0, limit) : shown;
   const hidden = shown.length - cards.length;
+  // a drop among the visible cards places the author next to the same neighbour in the full list
+  const drag = useReorder({
+    listRef: gridRef, mode: 'grid', axis: 'y', inset: { top: NAV_H },
+    onDrop: (id, at) => {
+      const others = cards.map((a) => a.id).filter((x) => x !== id);
+      const next = all.map((a) => a.id).filter((x) => x !== id);
+      const pos = at < others.length ? next.indexOf(others[at]) : next.indexOf(others[others.length - 1]) + 1;
+      next.splice(pos, 0, id);
+      onReorder(p.id, next);
+    },
+  });
   return (
     <div className={`${s.wing} ${full ? s.full : ''}`} style={{ '--delay': `${Math.min(index, 8) * 50}ms` }}>
       <div className={s.wingHead}>
@@ -192,8 +246,8 @@ function Wing({ group, full, limit, onMore, index = 0 }) {
           {hidden > 0 && <button type="button" className={s.more} onClick={onMore}>{t('home.seeAll', { n: shown.length })}<Icon name="arrow-right" size={14} /></button>}
         </span>
       </div>
-      <div className={s.grid}>
-        {cards.map((a, i) => <AuthorCard key={a.id} author={a} index={i} compact={!full} />)}
+      <div ref={gridRef} className={s.grid}>
+        {cards.map((a, i) => <AuthorCard key={a.id} author={a} index={i} compact={!full} drag={drag.handle(a.id)} />)}
         {(full || !shown.length) && (
           <button type="button" className={s.addTile} onClick={() => open('newAuthor', { platformId: p.id })}>
             <span className={s.addPlus}><Icon name="plus" size={22} /></span>
@@ -201,15 +255,16 @@ function Wing({ group, full, limit, onMore, index = 0 }) {
           </button>
         )}
       </div>
+      <DropMarker marker={drag.marker} />
     </div>
   );
 }
 
-function AuthorCard({ author, index, compact }) {
+function AuthorCard({ author, index, compact, drag }) {
   const t = useT();
   const fmt = useFormat();
   return (
-    <Link to={paths.author(author.id)} className={`${s.card} ${compact ? s.compact : ''}`} style={{ '--i': Math.min(index, 12) }}>
+    <Link to={paths.author(author.id)} className={`${s.card} ${compact ? s.compact : ''}`} style={{ '--i': Math.min(index, 12) }} draggable={false} {...drag}>
       <div className={s.coverWrap}>
         <ViewTransition name={`author-art-${author.id}`} share="morph">
           <Picture src={author.cover ?? author.banner} focus={author.cover ? null : author.coverFocus ?? { x: 0.5, y: 0.5 }} className={s.cover} />

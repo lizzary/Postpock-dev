@@ -10,6 +10,11 @@ import {
 
 const ID = 'starry';
 
+/** Where the brush runs dry on the main picture (the window layers repeat it so their strokes match). */
+export const THIN = (x, y) => smoothstep(0.62, 0.8, vnoise(x / 70 + 3.1, y / 55, 33)) * (y < 430 ? 0.75 : 0.85);
+/** Draw as an eraser (true) or as paint (false), on both the colour and the height canvas. */
+const erasing = (P, on) => { for (const c of [P.c, P.h]) c.globalCompositeOperation = on ? 'destination-out' : 'source-over'; };
+
 export const SKY = {
   deep: pal(['#152259', '#1b2b68', '#13264a', '#22357a', '#1a2f70', '#1d2f6b']),
   mid: pal(['#24418a', '#2f5fb3', '#27499c', '#1d2f6b', '#35609f', '#2a52a0']),
@@ -297,6 +302,18 @@ function outline(P, key, pts, w = 1.7, col = PRUSSIAN, gap = 0.2) {
   }
 }
 
+/**
+ * What a window does, decided once per window from its seed: about half stay dark, a few are lit from the start,
+ * the rest light up later in one of three waves, and only some of those give off a glow.
+ */
+export function windowPlan(key, i) {
+  const R = rng(hash(ID, 'plan', key, i));
+  const v = R();
+  if (v < 0.5) return { group: -1, glow: false };
+  if (v < 0.66) return { group: 0, glow: false };
+  return { group: 1 + Math.floor(R() * 3), glow: R() < 0.3 };
+}
+
 const windowShape = (x, y, w, h) => [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 function paintWindow(P, key, x, y, w, h, lit) {
   const R = rng(hash(ID, key));
@@ -308,7 +325,7 @@ function paintWindow(P, key, x, y, w, h, lit) {
   }
 }
 
-function paintHouse(P, hs, key, litNow) {
+function paintHouse(P, hs, key, wave = null) {
   const { x, yb, w, h, roof, side, type, roofC } = hs;
   const sc = w < 30 ? 0.6 : 1;
   const top = yb - h, dz = side * 0.35;
@@ -342,13 +359,24 @@ function paintHouse(P, hs, key, litNow) {
   outline(P, key + 'o2', [[x, top + 2], [x, yb]], 1.4 * sc + 0.3, PRUSSIAN, 0.3);
   outline(P, key + 'o4', [[x + w, top], [x + w, yb]], 1.4 * sc + 0.3, PRUSSIAN, 0.3);
   const ww = w < 30 ? 4 : 6, wh = w < 30 ? 5 : 8;
-  hs.win.forEach(([dx, dy, g], i) => paintWindow(P, `${key}w${i}`, x + dx, top + dy, ww, wh, litNow(g)));
+  const ours = [];
+  hs.win.forEach(([dx, dy], i) => {
+    const plan = windowPlan(key, i);
+    if (wave != null && plan.group === wave) ours.push([x + dx, top + dy, plan.glow, `${key}w${i}`]);
+    else paintWindow(P, `${key}w${i}`, x + dx, top + dy, ww, wh, wave == null && plan.group === 0);
+  });
   if (hs.door) fillPoly(P, windowShape(x + hs.door, yb - 12, 7, 12), hx('#1f2a40'), 110);
+  if (ours.length) {
+    erasing(P, false);
+    for (const [wx, wy, glow, k] of ours) if (glow) paintGlow(P, wx, wy, ww, wh, rng(hash(ID, 'glow', k)));
+    for (const [wx, wy, , k] of ours) paintWindow(P, k, wx, wy, ww, wh, true);
+    erasing(P, true);
+  }
 }
 
-function paintChurch(P, litNow) {
+function paintChurch(P, wave = null) {
   const C = CHURCH;
-  paintHouse(P, { x: C.x, yb: C.yb, w: C.w, h: C.h, roof: C.roof, side: 12, type: 'long', roofC: 'blue', win: C.win }, 'housech', litNow);
+  paintHouse(P, { x: C.x, yb: C.yb, w: C.w, h: C.h, roof: C.roof, side: 12, type: 'long', roofC: 'blue', win: C.win }, 'housech', wave);
   const tx = C.tx, tw = C.tw, top = C.top;
   const tower = [[tx, C.yb], [tx, top], [tx + tw, top], [tx + tw, C.yb]];
   const tside = [[tx + tw, C.yb], [tx + tw, top], [tx + tw + 8, top - 3], [tx + tw + 8, C.yb - 3]];
@@ -402,7 +430,12 @@ function paintTree(P, tr, k) {
   }
 }
 
-export function paintVillage(P) {
+/**
+ * The village. With `wave`, paints the layer of windows that light up in that wave instead: the village is replayed in
+ * the same order as the main picture, but as an eraser, so whatever stands in front of a window (a house, a tree, the
+ * church tower) hides it exactly as it does in the picture.
+ */
+export function paintVillage(P, wave = null) {
   const items = [];
   const g = 7.5, Y0 = 520, Y1 = 690;
   for (let gy = 0; Y0 + gy * g < Y1; gy++) for (let gx = -2; gx * g < W + 14; gx++) {
@@ -412,16 +445,15 @@ export function paintVillage(P) {
     items.push({ k: R(), x, y, R });
   }
   shuffleSort(items);
-  for (const { x, y, R } of items) {
+  if (wave == null) for (const { x, y, R } of items) {
     const pts = stream(x, y, lerp(12, 22, R()), (px, py) => { const s = 0.15 * Math.sin(px * 0.03 + py * 0.05); const l = Math.hypot(1, s); return [1 / l, s / l]; });
     dash(P, pts, lerp(4.6, 6.4, R()), R() < 0.2 ? pick(VILLAGE.groundHi, R) : pick(VILLAGE.ground, R), pick(VILLAGE.groundHi, R), R, { h: 140 });
   }
-  const litNow = (g2) => g2 === 0;
   TREES.forEach((tr, k) => { if (tr.z === 0) paintTree(P, tr, k); });
-  HOUSES.forEach((hs, k) => { if (hs.z <= 1) paintHouse(P, hs, `house${k}`, litNow); });
-  paintChurch(P, litNow);
+  HOUSES.forEach((hs, k) => { if (hs.z <= 1) paintHouse(P, hs, `house${k}`, wave); });
+  paintChurch(P, wave);
   TREES.forEach((tr, k) => { if (tr.z === 2 && !tr.front) paintTree(P, tr, k); });
-  HOUSES.forEach((hs, k) => { if (hs.z === 3) paintHouse(P, hs, `house${k}`, litNow); });
+  HOUSES.forEach((hs, k) => { if (hs.z === 3) paintHouse(P, hs, `house${k}`, wave); });
   TREES.forEach((tr, k) => { if (tr.z === 2 && tr.front) paintTree(P, tr, k); });
 }
 
@@ -558,7 +590,8 @@ export function paintMoonHalo(P) {
   const Hh = MOON.halo;
   const RINGS = [pal(['#f8f0c0', '#f6e8a8', '#fbf4d0']), pal(['#f1d35a', '#f4e08a', '#f6e27a']), pal(['#ecc45a', '#e8b84c', '#f0c860']),
     pal(['#f4e48a', '#f0dc90', '#e8dc98']), pal(['#e8a53a', '#ecb848', '#e09a38']), pal(['#d8c070', '#e0c878', '#c8c070']),
-    pal(['#b8c890', '#c8c878', '#a8c0a0']), pal(['#9cc0b0', '#a8c4a0'])];
+    // the outer rings end in the same moon-yellows as the sky's glow beneath, so the halo melts into it
+    pal(['#ecc45a', '#f0d070', '#e8b84c']), pal(['#e0c060', '#e8c868', '#d8c070'])];
   const INNER = pal(['#1f3f6a', '#264a72', '#2a4c62', '#1d3a5c', '#2f5a6a']);
   fillCircle(P, 0, 0, 8, INNER[0], 140);
   for (let rr = 4; rr < MOON.r + 2; rr += 4.6) {
@@ -576,7 +609,7 @@ export function paintMoonHalo(P) {
     const rp = RINGS[Math.min(RINGS.length - 1, ri)];
     for (let k = 0; k < n; k++) {
       const R = rng(hash(ID, 'mh', ri, k));
-      if (f > 0.78 && R() < (f - 0.78) * 3) continue;
+      if (f > 0.68 && R() < (f - 0.68) * 2.4) continue;
       const a0 = ((k + R() * 0.5) / n) * TAU, span = Math.min(1, 15 / rr);
       dash(P, arcPts(0, 0, rr + (R() - 0.5), a0, a0 + span, 4), lerp(4.4, 5.8, R()), pick(rp, R), pick(SKY.star, R), R, { h: 155 });
     }
@@ -651,8 +684,8 @@ export function buildCypress() {
   return out;
 }
 /** Paint the cypress at sway phase ph (radians). */
-export function paintCypress(P, list, ph) {
-  const A = 3.5, B = 1.2;
+export function paintCypress(P, list, ph, amp = 1) {
+  const A = 3.5 * amp, B = 1.2 * amp;
   const xc = (t) => CYP.bx + CYP.lean * t + A * Math.pow(t, 1.7) * Math.sin(ph - 3.2 * t) + B * t * t * Math.sin(2 * ph - 7 * t + 1);
   const map = (t, s) => [xc(t) + s * cypHW(t) * lobe(t, s), CYP.by - t * CYP_H];
   const sil = [];
@@ -660,29 +693,52 @@ export function paintCypress(P, list, ph) {
   for (let i = 60; i >= 0; i--) sil.push(map(i / 60, 0.98));
   fillPoly(P, sil, hx('#141e18'), 110);
   for (const d of list) {
-    const flick = d.tongue ? 0.03 * Math.sin(ph * 3 + (d.seed % 7)) : 0;
+    const flick = d.tongue ? 0.03 * amp * Math.sin(ph * 3 + (d.seed % 7)) : 0;
     const pts = d.pts.map(([t, s]) => map(t, s + flick * Math.abs(s)));
     dash(P, pts, d.w, d.ca, d.cb, rng(d.seed), { h: 150 });
   }
 }
 
-// ------------------------------------------------------------------ lit windows (one layer per group)
-export function windowGroup(S, g) {
-  const list = [];
-  HOUSES.forEach((hs) => hs.win.forEach(([dx, dy, gg]) => { if (gg === g) list.push([hs.x + dx, hs.yb - hs.h + dy, hs.w < 30 ? 4 : 6, hs.w < 30 ? 5 : 8]); }));
-  CHURCH.win.forEach(([dx, dy, gg]) => { if (gg === g) list.push([CHURCH.x + dx, CHURCH.yb - CHURCH.h + dy, 6, 8]); });
-  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
-  for (const [x, y, w, h] of list) { x0 = Math.min(x0, x - 18); y0 = Math.min(y0, y - 18); x1 = Math.max(x1, x + w + 18); y1 = Math.max(y1, y + h + 18); }
-  const Wn = new Painter(S, x0, y0, x1 - x0, y1 - y0); Wn.clear();
-  list.forEach(([x, y, w, h], i) => {
-    const R = rng(hash(ID, 'glow', g, i));
-    const cx = x + w / 2, cy = y + h / 2;
-    for (const [ri, rr] of [[0, 7], [1, 10]]) for (let k = 0; k < 6; k++) {
-      const a = (k / 7) * TAU + R() * 0.5 + ri * 0.4;
-      dash(Wn, arcPts(cx, cy, rr, a, a + 0.6, 3), ri ? 2.1 : 2.5, pick(ri ? pal(['#e8b84c', '#f0c860', '#d8a040']) : pal(['#f6e27a', '#f8ec9a', '#f1d35a']), R), hx('#fff4c0'), R, { h: 150, alpha: ri ? 0.6 : 0.85, nb: 2 });
-    }
-    paintWindow(Wn, `wl${g}_${i}`, x, y, w, h, true);
-  });
-  return { painter: Wn, x0, y0, w: x1 - x0, h: y1 - y0 };
+// ------------------------------------------------------------------ lit windows (one layer per wave)
+/**
+ * Lamplight spilling out of a window: a soft warm falloff, wider than tall. No strokes: small yellow dabs on a pale
+ * wall read as extra windows.
+ */
+function paintGlow(P, x, y, w, h, R) {
+  const cx = x + w / 2, cy = y + h / 2, rad = 13 + R() * 4;
+  const c = P.c;
+  c.save();
+  c.translate(cx, cy + 0.5);
+  c.scale(1.35, 1);
+  const g = c.createRadialGradient(0, 0, Math.min(w, h) * 0.35, 0, 0, rad);
+  g.addColorStop(0, 'rgba(255, 224, 140, 0.8)');
+  g.addColorStop(0.3, 'rgba(246, 202, 100, 0.42)');
+  g.addColorStop(0.65, 'rgba(234, 172, 70, 0.13)');
+  g.addColorStop(1, 'rgba(232, 168, 64, 0)');
+  c.fillStyle = g;
+  c.beginPath(); c.arc(0, 0, rad, 0, TAU); c.fill();
+  c.restore();
 }
 
+/** The windows that light up in wave g (null when the wave is empty). */
+export function windowGroup(S, g) {
+  const list = [];
+  const add = (hs, key) => {
+    const top = hs.yb - hs.h, small = hs.w < 30;
+    hs.win.forEach(([dx, dy], i) => {
+      const p = windowPlan(key, i);
+      if (p.group === g) list.push({ x: hs.x + dx, y: top + dy, w: small ? 4 : 6, h: small ? 5 : 8, glow: p.glow, key: `${key}w${i}` });
+    });
+  };
+  HOUSES.forEach((hs, k) => add(hs, `house${k}`));
+  add({ x: CHURCH.x, yb: CHURCH.yb, w: CHURCH.w, h: CHURCH.h, win: CHURCH.win }, 'housech');
+  if (!list.length) return null;
+  let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  for (const { x, y, w, h } of list) { x0 = Math.min(x0, x - 20); y0 = Math.min(y0, y - 16); x1 = Math.max(x1, x + w + 20); y1 = Math.max(y1, y + h + 16); }
+  const Wn = new Painter(S, x0, y0, x1 - x0, y1 - y0); Wn.clear();
+  Wn.thin = THIN;
+  erasing(Wn, true);
+  paintVillage(Wn, g);
+  erasing(Wn, false);
+  return { painter: Wn, x0, y0, w: x1 - x0, h: y1 - y0 };
+}

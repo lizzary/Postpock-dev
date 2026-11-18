@@ -50,7 +50,7 @@ export function TasksPanel() {
         <div className={s.line}>
           <span className={s.type}>{t(`tasks.types.${task.type}`)}</span>
           <span className={s.scope}>
-            {task.authors.slice(0, 3).map((a) => <Avatar key={a.id} src={a.avatar} name={a.name} size={16} className={s.miniAv} />)}
+            {task.authors.length > 0 && <span className={s.avStack}>{task.authors.slice(0, 3).map((a) => <Avatar key={a.id} src={a.avatar} name={a.name} size={16} className={s.miniAv} />)}</span>}
             <span className={s.scopeText}>{text.scope(task)}</span>
           </span>
         </div>

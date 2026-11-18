@@ -22,7 +22,8 @@ export default {
     emptyTitle: 'Nothing here yet', emptyBody: 'Add an author, or connect a platform and choose who to save from the Sync page.',
     emptyPlatform: 'No authors on this platform yet',
     allPlatforms: 'All', platformIndex: 'All platforms', findAuthor: 'Find an author', findPlatform: 'Find a platform', seeAll: 'See all {n}',
-    sort: { recent: 'Recently updated', name: 'By name', posts: 'Most posts' },
+    sort: { recent: 'Recently updated', name: 'By name', posts: 'Most posts', custom: 'Custom order' },
+    customOrder: 'Switched to custom order', dragHint: 'Drag to reorder platforms',
   },
   author: {
     statPosts: 'Posts', statFiles: 'Files', statSize: 'On disk', posts: 'Posts', postCount: { one: '{n} post', other: '{n} posts' }, files: '{n} files · {size}', checkedAt: 'Sync status checked {date}', unsynced: '{n} not synced',
@@ -59,7 +60,7 @@ export default {
   export: {
     title: 'Export', homeTitle: 'Export library', authorTitle: 'Export posts',
     authors: 'Authors', addAuthors: 'Add authors', outputDir: 'Export to', chooseDir: 'Choose folder', dates: 'Published',
-    custom: 'Custom', presets: { today: 'Today', d7: 'Last 7 days', d30: 'Last 30 days', month: 'This month', year: 'This year', all: 'All time' },
+    kinds: { image: 'Images', video: 'Video', audio: 'Audio', project: 'Project files', document: 'Documents', archive: 'Archives', other: 'Other' }, kindTypes: '{n} of {total} types', kindFiles: '{n} files', noTypes: 'The chosen authors have no files yet', custom: 'Custom', presets: { today: 'Today', d7: 'Last 7 days', d30: 'Last 30 days', month: 'This month', year: 'This year', all: 'All time' },
     pickRange: 'Pick a start and an end date', dayPosts: { one: '{n} post that day', other: '{n} posts that day' }, fileTypes: 'File types', fileName: 'File name',
     aggKeys: 'Grouping keys', dataKeys: 'Data keys', customKeys: '{platform} keys', customDisabled: 'Platform keys are unavailable when authors come from more than one platform',
     format: 'Format', preview: 'Folder preview', perDir: 'Per folder', moreFiles: { one: '{n} more file', other: '{n} more files' }, noFiles: 'No files match',

@@ -15,7 +15,7 @@ export const DEFAULT_DB_PATH = 'D:\\PostPock\\data';
 
 export function loadConfig() {
   const sysDark = typeof matchMedia === 'function' && matchMedia('(prefers-color-scheme: dark)').matches;
-  return read(CONFIG_KEY, { language: 'zh-CN', theme: sysDark ? 'dark' : 'light', dbPath: DEFAULT_DB_PATH, syncThreads: 4 });
+  return read(CONFIG_KEY, { language: 'en', theme: sysDark ? 'dark' : 'light', dbPath: DEFAULT_DB_PATH, syncThreads: 4 });
 }
 export const saveConfig = (cfg) => write(CONFIG_KEY, cfg);
 

@@ -129,6 +129,9 @@ const COVER_DIMS = { fanbox: [1200, 630], fantia: [1000, 640], patreon: [1280, 7
 const ATTACHMENTS = [
   { name: 'psd_set', ext: 'zip', mb: [140, 620] }, { name: 'layered', ext: 'psd', mb: [80, 310] },
   { name: 'wallpapers', ext: 'zip', mb: [40, 120] }, { name: 'notes', ext: 'pdf', mb: [2, 12] }, { name: 'brushes', ext: 'clip', mb: [30, 90] },
+  { name: 'sketches', ext: 'rar', mb: [20, 80] }, { name: 'timelapse', ext: 'mov', mb: [60, 240] }, { name: 'voice', ext: 'wav', mb: [8, 40] },
+  { name: 'story', ext: 'txt', mb: [1, 1] }, { name: 'layers', ext: 'sai2', mb: [40, 160] }, { name: 'loop', ext: 'gif', mb: [3, 18] },
+  { name: 'novel', ext: 'epub', mb: [1, 6] }, { name: 'textures', ext: '7z', mb: [30, 140] }, { name: 'stills', ext: 'webp', mb: [1, 4] },
 ];
 
 /**

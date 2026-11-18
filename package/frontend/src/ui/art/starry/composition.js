@@ -3,7 +3,7 @@
 // the panel is extended left and right with more streams, stars, spirals, farms and fields.
 import { curveFn, smoothPath } from './engine.js';
 
-export const VERSION = 'starry-wide-2';
+export const VERSION = 'starry-wide-8';
 export const W = 2800;
 export const H = 820;
 

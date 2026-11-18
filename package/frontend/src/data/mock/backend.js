@@ -1,5 +1,6 @@
 // The mock backend: everything the Go service will provide, simulated in memory.
 // Methods return plain data (the API layer copies it and adds latency); changes are announced through onChange().
+import { kindOfExt } from '../domain/fileKinds.js';
 import { seedLibrary, buildPost, BUILTIN_PLATFORMS, daysAgo, isoOf } from './seed.js';
 import { loadConfig, saveConfig, loadDbPrefs, saveDbPrefs, DEFAULT_DB_PATH } from './persist.js';
 import { customKeys, AGG_GROUPS, DATA_GROUPS, DATE_FORMAT_LABEL, pickLang } from '../domain/keys.js';
@@ -62,7 +63,14 @@ const lib = () => openLibrary(config.dbPath);
 const savePrefs = (L) => saveDbPrefs(L.path, L.prefs);
 
 // ------------------------------------------------------------------ views of the data
-const platformsOf = (L) => [...BUILTIN_PLATFORMS, ...L.platforms];
+/** Platforms in the user's order (set by dragging on the home page); ones never placed keep their default order. */
+function platformsOf(L) {
+  const all = [...BUILTIN_PLATFORMS, ...L.platforms];
+  const order = L.prefs.platformOrder;
+  if (!order?.length) return all;
+  const at = new Map(order.map((id, i) => [id, i]));
+  return all.map((p, i) => [p, at.has(p.id) ? at.get(p.id) : order.length + i]).sort((a, b) => a[1] - b[1]).map(([p]) => p);
+}
 const platformById = (L, id) => platformsOf(L).find((p) => p.id === id);
 const authorUrl = (L, a) => a.url || (platformById(L, a.platformId)?.authorUrl || '').replace('{handle}', a.handle);
 
@@ -116,6 +124,7 @@ export function getHome() {
   return {
     platforms: platformsOf(L).map((p) => platformView(L, p)),
     authors: L.authors.map((a) => authorView(L, a)),
+    view: getHomeView(),
     lastViewed: last ? { post: postView(L, last), author: authorChip(L, last.authorId), viewedAt: L.prefs.lastViewed.at } : null,
     stats: {
       authors: L.authors.length, posts: posts.length, files: L.files.length,
@@ -283,6 +292,18 @@ export function openFile(fileId) { return { ok: lib().filesById.has(fileId) }; }
 export function revealFile(fileId) { return { ok: lib().filesById.has(fileId) }; }
 
 // ------------------------------------------------------------------ page settings (optimistic on the client)
+export function setPlatformOrder(ids) {
+  const L = lib();
+  L.prefs.platformOrder = ids.filter((id) => platformById(L, id));
+  savePrefs(L);
+  emit('library');
+  return { ok: true };
+}
+/** Home page: author sort ('recent' | 'name' | 'posts' | 'custom') and the custom order, per platform. */
+const DEFAULT_HOME_VIEW = { sort: 'recent', authorOrder: {} };
+export function getHomeView() { return { ...DEFAULT_HOME_VIEW, ...(lib().prefs.home ?? {}) }; }
+export function saveHomeView(view) { const L = lib(); L.prefs.home = { ...getHomeView(), ...view }; savePrefs(L); }
+
 const DEFAULT_VIEW = { sort: 'published-desc', columns: 2 };
 export function getAuthorView(authorId) { return { ...DEFAULT_VIEW, ...(lib().prefs.views[authorId] ?? {}) }; }
 export function saveAuthorView(authorId, view) { const L = lib(); L.prefs.views[authorId] = { ...getAuthorView(authorId), ...view }; savePrefs(L); }
@@ -575,7 +596,7 @@ export function getExportOptions({ authorIds, scope }) {
   for (const id of scopeAuthors(L, [...chosen])) for (const p of L.postsByAuthor.get(id) ?? []) { const d = p.publishedAt.slice(0, 10); calendar[d] = (calendar[d] ?? 0) + 1; }
   return {
     authors: L.authors.map((a) => ({ ...authorChip(L, a.id), postCount: L.postsByAuthor.get(a.id)?.length ?? 0 })),
-    fileTypes: [...counts].sort((a, b) => b[1] - a[1]).map(([ext, count]) => ({ ext, count })),
+    fileTypes: [...counts].sort((a, b) => b[1] - a[1]).map(([ext, count]) => ({ ext, count, kind: kindOfExt(ext) })),
     keys: {
       agg: groups(AGG_GROUPS), data: groups(DATA_GROUPS),
       custom: { platform: single ? single.name : null, enabled: platforms.size <= 1, agg: custom.agg.map(customLabel), data: custom.data.map(customLabel) },

@@ -4,6 +4,7 @@ import * as api from '../data/api/index.js';
 import { useQuery, useSuspenseQuery, useDebounced } from './query.js';
 
 export { useDebounced };
+export const FILE_KINDS = api.FILE_KINDS;
 
 // ------------------------------------------------------------------ library
 // Page data suspends (see useSuspenseQuery); smaller pieces load in place.
@@ -27,6 +28,8 @@ export const libraryActions = {
   updatePost: api.library.updatePost,
   openFile: api.library.openFile,
   revealFile: api.library.revealFile,
+  setPlatformOrder: api.library.setPlatformOrder,
+  saveHomeView: api.homeView.save,
   importImage: api.importImage,
   importFile: api.importFile,
 };

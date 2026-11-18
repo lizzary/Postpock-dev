@@ -12,7 +12,7 @@ function lookup(dict, key) {
 }
 
 export function makeT(lang) {
-  const dict = DICTS[lang] ?? zh;
+  const dict = DICTS[lang] ?? en;
   const plural = new Intl.PluralRules(lang === 'zh-CN' ? 'zh' : 'en');
   return (key, params) => {
     let v = lookup(dict, key) ?? lookup(zh, key) ?? key;

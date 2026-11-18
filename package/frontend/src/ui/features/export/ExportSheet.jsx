@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { exportActions, useDayPosts, useExportOptions, useExportPreview, useLastExportConfig, usePlatforms } from '../../../bridge/index.js';
+import { FILE_KINDS, exportActions, useDayPosts, useExportOptions, useExportPreview, useLastExportConfig, usePlatforms } from '../../../bridge/index.js';
 import { useT } from '../../../i18n/index.jsx';
 import { dayKey, useFormat } from '../../lib/format.js';
 import { Icon } from '../../icons/Icon.jsx';
-import { Button, Checkbox, Chip, IconButton, TextInput } from '../../components/controls.jsx';
+import { Button, Checkbox, IconButton, TextInput, Tick } from '../../components/controls.jsx';
 import { Calendar } from '../../components/calendar.jsx';
 import { Popover, Sheet } from '../../components/overlay.jsx';
 import { Spinner, toast } from '../../components/feedback.jsx';
@@ -106,17 +106,7 @@ export default function ExportSheet({ open, onClose, scope = 'home', authorId, p
                   <button type="button" onClick={() => set({ fileTypes: [] })}>{t('common.selectNone')}</button>
                 </span>
               )}>
-                <div className={s.types}>
-                  {(options?.fileTypes ?? []).map(({ ext, count }) => {
-                    const on = (cfg.fileTypes ?? allTypes).includes(ext);
-                    return (
-                      <Chip key={ext} selected={on} count={fmt.number(count)} className={s.typeChip}
-                        onClick={() => { const cur = cfg.fileTypes ?? allTypes; set({ fileTypes: on ? cur.filter((x) => x !== ext) : [...cur, ext] }); }}>
-                        .{ext}
-                      </Chip>
-                    );
-                  })}
-                </div>
+                <TypesField types={options?.fileTypes ?? []} value={cfg.fileTypes} onChange={(fileTypes) => set({ fileTypes })} />
               </Section>
             </div>
 
@@ -200,37 +190,99 @@ function DirField({ value, onChange }) {
   );
 }
 
+/** The date range as one field; presets and the calendar share a popover. */
 function DatesField({ cfg, set, marks }) {
   const t = useT();
   const fmt = useFormat();
-  const [cal, setCal] = useState(false);
-  const calBtn = useRef(null);
+  const [open, setOpen] = useState(false);
+  const btn = useRef(null);
   const d = cfg.dates;
   const single = d.mode === 'range' && d.from === d.to ? d.from : null;
   const days = d.mode === 'range' ? Math.round((new Date(`${d.to}T00:00`) - new Date(`${d.from}T00:00`)) / 86400000) + 1 : 0;
   const preset = PRESETS.find((p) => sameDates(d, presetRange(p)));
+  const rangeText = d.mode === 'all' ? t('export.allDates') : single ? fmt.date(single) : `${fmt.date(d.from)} – ${fmt.date(d.to)}`;
   return (
     <div className={s.dates}>
-      <div className={s.presets}>
-        {PRESETS.map((p) => (
-          <Chip key={p} selected={preset === p} onClick={() => set({ dates: presetRange(p), dayPosts: null })}>{t(`export.presets.${p}`)}</Chip>
-        ))}
-        <Chip ref={calBtn} icon="calendar" selected={!preset} onClick={() => setCal((v) => !v)}>{t('export.custom')}</Chip>
-      </div>
-      <div className={s.rangeLine}>
-        <Icon name="calendar" size={14} />
-        {d.mode === 'all' ? t('export.allDates')
-          : single ? fmt.date(single)
-            : <>{fmt.date(d.from)} – {fmt.date(d.to)}<span className={s.rangeSmall}>{t('export.days', { n: days })}</span></>}
-      </div>
-      <Popover open={cal} onClose={() => setCal(false)} anchor={calBtn} placement="bottom-start" trapFocus={false} label={t('export.dates')}>
-        <div className={s.calPop}>
-          <Calendar mode="range" value={d.mode === 'range' ? { from: d.from, to: d.to } : null} marks={marks} maxDay={dayKey(new Date())}
-            onChange={(r) => set({ dates: { mode: 'range', from: r.from, to: r.to }, dayPosts: null })} />
+      <button ref={btn} type="button" className={s.pickField} aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+        <Icon name="calendar" size={16} className={s.pickIcon} />
+        <span className={s.pickText}>
+          <span className={s.pickMain}>{preset && preset !== 'all' ? t(`export.presets.${preset}`) : rangeText}</span>
+          {d.mode === 'range' && <span className={s.pickSub}>{preset && preset !== 'all' ? `${rangeText} · ` : ''}{t('export.days', { n: days })}</span>}
+        </span>
+        <Icon name="chevron-down" size={15} className={s.fieldChev} />
+      </button>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={btn} placement="bottom-start" trapFocus={false} label={t('export.dates')}>
+        <div className={s.datePop}>
+          <ul className={s.presetList}>
+            {PRESETS.map((p) => (
+              <li key={p}>
+                <button type="button" data-on={preset === p} onClick={() => { set({ dates: presetRange(p), dayPosts: null }); setOpen(false); }}>
+                  {t(`export.presets.${p}`)}{preset === p && <Icon name="check" size={14} />}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className={s.calPop}>
+            <Calendar mode="range" value={d.mode === 'range' ? { from: d.from, to: d.to } : null} marks={marks} maxDay={dayKey(new Date())}
+              onChange={(r) => set({ dates: { mode: 'range', from: r.from, to: r.to }, dayPosts: null })} />
+          </div>
         </div>
       </Popover>
       {single && <DayPosts day={single} cfg={cfg} set={set} />}
     </div>
+  );
+}
+
+const KIND_ICON = { image: 'image', video: 'video', audio: 'audio', project: 'brush', document: 'file', archive: 'archive', other: 'file' };
+/** File types grouped by kind: one line per kind, its extensions unfold on demand. */
+function TypesField({ types, value, onChange }) {
+  const t = useT();
+  const fmt = useFormat();
+  const [open, setOpen] = useState(() => new Set());
+  const all = types.map((x) => x.ext);
+  const on = new Set(value ?? all);
+  const kinds = FILE_KINDS.map((k) => ({ k, list: types.filter((x) => x.kind === k) })).filter((g) => g.list.length);
+  const put = (exts, yes) => {
+    const next = new Set(on);
+    for (const e of exts) (yes ? next.add(e) : next.delete(e));
+    onChange(next.size === all.length ? null : all.filter((e) => next.has(e)));
+  };
+  if (!types.length) return <div className={s.typesNone}>{t('export.noTypes')}</div>;
+  return (
+    <ul className={s.kinds}>
+      {kinds.map(({ k, list }) => {
+        const exts = list.map((x) => x.ext), n = exts.filter((e) => on.has(e)).length;
+        const files = list.reduce((sum, x) => sum + (on.has(x.ext) ? x.count : 0), 0);
+        const expanded = open.has(k);
+        return (
+          <li key={k} className={s.kind} data-open={expanded} data-off={n === 0}>
+            <div className={s.kindRow}>
+              <button type="button" className={s.kindTick} onClick={() => put(exts, n !== exts.length)} aria-label={t(`export.kinds.${k}`)}>
+                <Tick state={n === 0 ? 'off' : n === exts.length ? 'on' : 'mixed'} size={16} />
+              </button>
+              <button type="button" className={s.kindMain} aria-expanded={expanded}
+                onClick={() => setOpen((cur) => { const x = new Set(cur); if (x.has(k)) x.delete(k); else x.add(k); return x; })}>
+                <Icon name={KIND_ICON[k]} size={15} className={s.kindIcon} />
+                <span className={s.kindName}>{t(`export.kinds.${k}`)}</span>
+                <span className={`${s.kindMeta} num`}>
+                  {exts.length > 1 ? t('export.kindTypes', { n, total: exts.length }) : `.${exts[0]}`} · {t('export.kindFiles', { n: fmt.number(files) })}
+                </span>
+                {exts.length > 1 && <Icon name="chevron-down" size={14} className={s.kindChev} />}
+              </button>
+            </div>
+            {expanded && exts.length > 1 && (
+              <div className={s.exts}>
+                {list.map(({ ext, count }) => (
+                  <button key={ext} type="button" className={s.ext} aria-pressed={on.has(ext)} onClick={() => put([ext], !on.has(ext))}>
+                    .{ext}<span className="num">{fmt.number(count)}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

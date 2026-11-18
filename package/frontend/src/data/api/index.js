@@ -3,6 +3,7 @@
 // HTTP/SSE client against the Go service keeps this surface unchanged.
 import * as backend from '../mock/backend.js';
 import { stripIllegal, validateTemplate } from '../domain/filename.js';
+export { FILE_KINDS } from '../domain/fileKinds.js';
 
 const LATENCY = { read: [80, 200], write: [160, 320] };
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -51,12 +52,18 @@ export const library = {
   updatePost: (id, patch) => call('write', () => backend.updatePost(id, patch)),
   openFile: (fileId) => call('write', () => backend.openFile(fileId)),
   revealFile: (fileId) => call('write', () => backend.revealFile(fileId)),
+  setPlatformOrder: (ids) => call('write', () => backend.setPlatformOrder(ids)),
 };
 
 /** Per-author page settings (sort, columns). Saved optimistically: callers never wait for the write. */
 export const views = {
   get: (authorId) => call('read', () => backend.getAuthorView(authorId)),
   save: (authorId, view) => { call('write', () => backend.saveAuthorView(authorId, view)).catch(() => {}); },
+};
+
+/** Home page settings (author sort and custom order). Saved optimistically, like the author views. */
+export const homeView = {
+  save: (view) => { call('write', () => backend.saveHomeView(view)).catch(() => {}); },
 };
 
 export const search = {

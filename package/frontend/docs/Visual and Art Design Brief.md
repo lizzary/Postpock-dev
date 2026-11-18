@@ -159,12 +159,21 @@ Location: `src/ui/art/starry/`. It is a faithful port of the impasto technique f
 - **Composition** (`composition.js`): great double spiral right of centre, four small spirals, twenty haloed stars,
   crescent moon kept below the top bar, cypress at the right edge, village and farms across the land, field at the
   bottom (hidden by the fade). The left third is kept calmer because the greeting and cards sit there.
-- **Layers** (`bake.js`): one static picture plus spinning discs (spirals, star halos, moon halo), flares, window
-  groups and eight cypress frames. Painted in a Web Worker, streamed to the page as each layer finishes, cached in
-  IndexedDB as WebP.
+- **Layers** (`bake.js`): one static picture plus spinning discs (spirals, star halos, moon halo), flares, three
+  waves of village windows, and one upright cypress. Painted in a Web Worker, streamed to the page as each layer
+  finishes, cached in IndexedDB as WebP.
 - **Life:** slow idle rotation; pointer movement stirs nearby spirals; scrolling spins them; clicking a star or the
-  moon makes it flare; the cypress sways; windows light up group by group. All motion stops off-screen and under
-  reduced motion.
+  moon makes it flare; the cypress bends gently, and sways once more when the pointer brushes it; windows light up
+  in three waves. All motion stops off-screen and under reduced motion.
+- **Moving painted things:** never cross-fade separately painted versions of a shape (the strokes do not line up and
+  read as flicker). Paint it once and move it on screen (rotate a disc, bend the cypress in device-pixel bands).
+- **Windows** (`windowPlan` in `paint.js`): each window is seeded to stay dark (about half), be lit from the start,
+  or light up in a wave; only some lit windows glow. A glow is a soft warm falloff, wider than tall — no strokes
+  (small yellow dabs on a pale wall read as extra windows). Each wave layer is painted by replaying the village in
+  picture order with everything except that wave's windows drawn as an eraser, so houses and trees in front hide
+  windows behind them exactly as in the main picture.
+- **Moon:** the sky paints a broad yellow glow around the moon; the turning halo layer sits on it and ends in the
+  same moon-yellows, thinning out at its edge, so the two read as one light.
 - **Rules for changes:** bump `VERSION` in `composition.js` whenever the picture changes (it invalidates caches);
   keep stars/moon away from the top 90 units (the bar sits there); keep the cypress inside the visible range at
   1024 px (`ANCHOR_X` in `StarryNight.jsx`); check the first-paint time stays reasonable.

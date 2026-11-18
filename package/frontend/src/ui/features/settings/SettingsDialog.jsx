@@ -61,7 +61,7 @@ export default function SettingsDialog({ open, onClose }) {
         <div className={s.row}>
           <div className={s.label}><Icon name="language" size={18} />{t('settings.language')}</div>
           <Segmented value={settings.language} onChange={(v) => settingsActions.update({ language: v })} label={t('settings.language')}
-            options={[{ value: 'zh-CN', label: '简体中文' }, { value: 'en', label: 'English' }]} />
+            options={[{ value: 'en', label: 'English' }, { value: 'zh-CN', label: '简体中文' }]} />
         </div>
         <div className={s.row}>
           <div className={s.label}><Icon name="palette" size={18} />{t('settings.theme')}</div>

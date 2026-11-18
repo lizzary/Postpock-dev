@@ -132,16 +132,24 @@ function CoverPicker({ form, set }) {
   const f = form.coverFocus;
   const horizontal = ratio >= COVER_RATIO;
   const fw = horizontal ? COVER_RATIO / ratio : 1, fh = horizontal ? 1 : ratio / COVER_RATIO;
-  const frame = { left: `${f.x * (1 - fw) * 100}%`, top: `${f.y * (1 - fh) * 100}%`, width: `${fw * 100}%`, height: `${fh * 100}%` };
+  // Everything moves by transform only (no layout, no repaint of the dimming): the frame slides over a dimmed copy
+  // of the banner and shows the bright banner through itself, shifted the opposite way.
+  const frame = { width: `${fw * 100}%`, height: `${fh * 100}%`, transform: `translate(${(f.x * (1 - fw) / fw) * 100}%, ${(f.y * (1 - fh) / fh) * 100}%)` };
+  const inner = { width: `${100 / fw}%`, height: `${100 / fh}%`, transform: `translate(${-f.x * (1 - fw) * 100}%, ${-f.y * (1 - fh) * 100}%)` };
 
+  // pointer events can outpace the screen: apply at most one update per frame
+  const pending = useRef(null);
+  const raf = useRef(0);
+  useEffect(() => () => cancelAnimationFrame(raf.current), []);
   const move = (e) => {
     if (!drag.current) return;
-    const r = box.current.getBoundingClientRect();
+    const r = drag.current.rect;
     const dx = (e.clientX - drag.current.x) / r.width, dy = (e.clientY - drag.current.y) / r.height;
-    set({ coverFocus: {
+    pending.current = {
       x: fw < 1 ? Math.max(0, Math.min(1, drag.current.fx + dx / (1 - fw))) : 0.5,
       y: fh < 1 ? Math.max(0, Math.min(1, drag.current.fy + dy / (1 - fh))) : 0.5,
-    } });
+    };
+    if (!raf.current) raf.current = requestAnimationFrame(() => { raf.current = 0; set({ coverFocus: pending.current }); });
   };
   return (
     <div className={s.cover}>
@@ -151,9 +159,11 @@ function CoverPicker({ form, set }) {
         <>
           <div ref={box} className={s.cropBox} style={{ aspectRatio: ratio }}>
             <img src={src} alt="" draggable={false} onLoad={(e) => setRatio(e.currentTarget.naturalWidth / e.currentTarget.naturalHeight || 3)} />
+            <span className={s.cropDim} />
             <div className={s.cropFrame} style={frame}
-              onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, y: e.clientY, fx: f.x, fy: f.y }; }}
-              onPointerMove={move} onPointerUp={() => { drag.current = null; }}>
+              onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); drag.current = { x: e.clientX, y: e.clientY, fx: f.x, fy: f.y, rect: box.current.getBoundingClientRect() }; }}
+              onPointerMove={move} onPointerUp={() => { drag.current = null; }} onPointerCancel={() => { drag.current = null; }}>
+              <img src={src} alt="" draggable={false} className={s.cropInner} style={inner} />
               <span className={s.cropGrip}><Icon name="grip" size={16} /></span>
             </div>
           </div>

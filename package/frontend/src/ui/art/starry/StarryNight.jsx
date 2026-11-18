@@ -1,16 +1,24 @@
 // The home-page Starry Night: a baked impasto picture plus the parts that move.
 //   • the spirals turn slowly; moving the pointer across the sky stirs them, scrolling spins them
 //   • stars breathe; a star or the moon answers a click with a flare
-//   • the cypress sways, and the village windows light up one group after another
+//   • the cypress sways gently, and once more when the pointer brushes it; village windows light up in waves
 import { useEffect, useRef } from 'react';
-import { W, H, STARS, MOON } from './composition.js';
-import { CYPRESS_FRAMES } from './bake.js';
+import { W, H, STARS, MOON, CYP } from './composition.js';
 import s from './StarryNight.module.css';
 
 const ANCHOR_X = 0.72;                 // which part of the panel stays in view when the page is narrow
 const BASE_SPIN = 0.045;               // rad/s of the great spiral when nothing touches it
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const smooth = (t) => { t = clamp(t, 0, 1); return t * t * (3 - 2 * t); };
+const TAU = Math.PI * 2;
+const CYP_H = CYP.by - CYP.top;
+/** Is a point (composition units) on the cypress? Mirrors its painted half-width profile. */
+const onCypress = (x, y) => {
+  const t = (CYP.by - y) / CYP_H;
+  if (t < 0.02 || t > 0.98) return false;
+  const hw = CYP.hw * (0.5 + 0.5 * smooth(t / 0.2)) * Math.pow(1 - t, 0.72);
+  return Math.abs(x - (CYP.bx + CYP.lean * t)) < hw * 1.05 + 4;
+};
 
 export function StarryNight({ className, onReady }) {
   const wrap = useRef(null);
@@ -22,11 +30,12 @@ export function StarryNight({ className, onReady }) {
   useEffect(() => {
     const el = wrap.current, base = baseCv.current, top = topCv.current;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const layers = { spin: [], star: [], flare: [], halo: null, moon: null, window: [], cypress: [], main: null };
+    const layers = { spin: [], star: [], flare: [], halo: null, moon: null, window: [], cypress: null, main: null };
     const born = new Map();          // layer → arrival time (fade-in)
     const extra = new Map();         // spin layer id → { angle, vel }
     const flares = new Map();        // star index → start time
     let moonPulse = -10;
+    let kick = { t: -1e9, dir: 1 }, overTree = false;   // the cypress's hover sway
     let view = { w: 1, h: 1, dpr: 1, k: 1, ox: 0, oy: 0 };
     let t0 = performance.now(), last = t0, lastInput = -1e9, visible = true, raf = 0, firstFrame = 0;
 
@@ -118,15 +127,34 @@ export function StarryNight({ className, onReady }) {
         ctx.drawImage(l.bitmap, l.x, l.y, l.w, l.h);
         ctx.globalAlpha = 1;
       }
-      if (layers.cypress.length === CYPRESS_FRAMES) {
-        const ph = ((t / 11) % 1) * CYPRESS_FRAMES, i = Math.floor(ph), fr = smooth(ph - i);
-        const A = layers.cypress[i], B = layers.cypress[(i + 1) % CYPRESS_FRAMES];
-        ctx.drawImage(A.bitmap, A.x, A.y, A.w, A.h);
-        if (fr > 0.01) { ctx.globalAlpha = fr; ctx.drawImage(B.bitmap, B.x, B.y, B.w, B.h); ctx.globalAlpha = 1; }
-      } else if (layers.cypress[0]) {
-        const A = layers.cypress[0];
-        ctx.drawImage(A.bitmap, A.x, A.y, A.w, A.h);
+      if (layers.cypress) drawCypress(ctx, layers.cypress, t, now);
+    }
+
+    /**
+     * The cypress is one upright picture, bent on screen: each band of device rows shifts sideways by an amount that
+     * grows towards the tip. Bands sit on whole device pixels, so no seams show between them.
+     */
+    function drawCypress(ctx, l, t, now) {
+      const idle = 2.2 * Math.sin((t * TAU) / 9) + 0.8 * Math.sin((t * TAU) / 4.3 + 1);
+      const u = (now - kick.t) / 1000;
+      const push = u < 5 ? kick.dir * 12 * Math.exp(-u / 0.95) * Math.sin((u * TAU) / 1.6) : 0;
+      const amp = reduce ? 0 : idle + push;                       // sideways bend at the tip, in units
+      const sc = view.k * view.dpr, bm = l.bitmap, py = bm.height / l.h;
+      const dev = (yU) => (yU * view.k + view.oy) * view.dpr;
+      const unit = (Y) => (Y / view.dpr - view.oy) / view.k;
+      const bend = (yU) => amp * Math.pow(clamp((CYP.by - yU) / CYP_H, 0, 1), 1.8);
+      ctx.save();
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      const Y0 = Math.floor(dev(l.y)), Y1 = Math.ceil(dev(l.y + l.h)), x0 = l.x * sc + view.ox * view.dpr, wD = l.w * sc;
+      // the foot barely moves: draw it in one piece, then the rest in thin bands
+      let Y = Y1;
+      while (Y > Y0 && Math.abs(bend(unit(Y - 4))) * sc < 0.2) Y -= 4;
+      if (Y < Y1) ctx.drawImage(bm, 0, (unit(Y) - l.y) * py, bm.width, (unit(Y1) - unit(Y)) * py, x0, Y, wD, Y1 - Y);
+      for (let b = Y0; b < Y; b += 3) {
+        const e = Math.min(Y, b + 3), yU = unit(b), yE = unit(e);
+        ctx.drawImage(bm, 0, (yU - l.y) * py, bm.width, (yE - yU) * py, x0 + bend((yU + yE) / 2) * sc, b, wD, e - b);
       }
+      ctx.restore();
     }
 
     // ---------------------------------------------------------- loop (only while visible; slower when idle)
@@ -161,7 +189,7 @@ export function StarryNight({ className, onReady }) {
       else if (l.kind === 'halo') layers.halo = l;
       else if (l.kind === 'moon') layers.moon = l;
       else if (l.kind === 'window') layers.window.push(l);
-      else if (l.kind === 'cypress') layers.cypress[l.frame] = l;
+      else if (l.kind === 'cypress') layers.cypress = l;
       if (reduce) frame(performance.now());
     };
     worker.postMessage({ S });
@@ -183,6 +211,13 @@ export function StarryNight({ className, onReady }) {
         }
         lastInput = now;
       }
+      // brushing past the cypress sets it swaying once, away from the pointer's direction of travel
+      const over = onCypress(x, y);
+      if (over && !overTree && now - kick.t > 1800 && !reduce) {
+        kick = { t: now, dir: prev && x !== prev.x ? Math.sign(x - prev.x) : 1 };
+        lastInput = now;
+      }
+      overTree = over;
       prev = { x, y, t: now };
       const hit = hitTest(x, y);
       el.style.cursor = hit ? 'pointer' : '';
@@ -214,7 +249,9 @@ export function StarryNight({ className, onReady }) {
     ro.observe(el);
     const onVis = () => { if (document.hidden) stop(); else start(); };
     document.addEventListener('visibilitychange', onVis);
+    const onLeave = () => { overTree = false; prev = null; };
     el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerleave', onLeave);
     el.addEventListener('click', onClick);
     if (!reduce) window.addEventListener('scroll', onScroll, { passive: true });
     measure();
@@ -226,10 +263,11 @@ export function StarryNight({ className, onReady }) {
       ro.disconnect();
       document.removeEventListener('visibilitychange', onVis);
       el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerleave', onLeave);
       el.removeEventListener('click', onClick);
       window.removeEventListener('scroll', onScroll);
-      for (const list of [layers.spin, layers.star, layers.flare, layers.window, layers.cypress]) for (const l of list) l?.bitmap?.close?.();
-      for (const l of [layers.main, layers.halo, layers.moon]) l?.bitmap?.close?.();
+      for (const list of [layers.spin, layers.star, layers.flare, layers.window]) for (const l of list) l?.bitmap?.close?.();
+      for (const l of [layers.main, layers.halo, layers.moon, layers.cypress]) l?.bitmap?.close?.();
     };
   }, []);
 
