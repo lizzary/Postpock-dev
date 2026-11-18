@@ -21,6 +21,8 @@ export default {
     addAuthor: '新增作者', addPlatform: '新增自定义平台',
     emptyTitle: '这里还是空的', emptyBody: '新增一位作者，或者连接平台后从同步页面选择要保存的作者。',
     emptyPlatform: '这个平台还没有作者',
+    allPlatforms: '全部', platformIndex: '全部平台', findAuthor: '查找作者', findPlatform: '查找平台', seeAll: '查看全部 {n} 位',
+    sort: { recent: '最近更新', name: '按名字', posts: '文章最多' },
   },
   author: {
     statPosts: '文章', statFiles: '文件', statSize: '占用空间', posts: '文章', postCount: '{n} 篇文章', files: '{n} 个文件 · {size}', checkedAt: '{date}检查过同步状态', unsynced: '{n} 篇未同步',
@@ -57,7 +59,7 @@ export default {
   export: {
     title: '导出', homeTitle: '导出收藏', authorTitle: '导出作者文章',
     authors: '作者', addAuthors: '添加作者', outputDir: '导出到', chooseDir: '选择文件夹', dates: '发布日期',
-    presets: { today: '今天', d7: '最近 7 天', d30: '最近 30 天', month: '本月', year: '今年', all: '全部' },
+    custom: '自定义', presets: { today: '今天', d7: '最近 7 天', d30: '最近 30 天', month: '本月', year: '今年', all: '全部' },
     pickRange: '选择开始和结束日期', dayPosts: '当天发布的 {n} 篇', fileTypes: '文件类型', fileName: '文件名',
     aggKeys: '聚合键', dataKeys: '数据键', customKeys: '{platform} 自定义键', customDisabled: '所选作者来自多个平台时不能使用平台自定义键',
     format: '格式', preview: '目录预览', perDir: '每个目录显示', moreFiles: '还有 {n} 个文件', noFiles: '没有符合条件的文件',
@@ -75,7 +77,7 @@ export default {
     filter: '筛选标题', selected: '已选 {n} 篇', syncN: '同步 {n} 篇', updateN: '检查更新 {n} 篇',
     selectStatus: '选中全部{status}', submittedSync: '已提交同步任务，共 {n} 篇', submittedUpdate: '已提交更新检查，共 {n} 篇', nothing: '所选文章中没有可以处理的条目',
     pickHint: '先选择作者，再检查同步状态', emptyList: '检查同步状态后，这里会列出作者的全部文章', dragHint: '按住拖动可以连续勾选',
-    noneInFilter: '这个筛选下没有文章', authorProgress: '{done}/{total} 位作者',
+    noneInFilter: '这个筛选下没有文章', authorProgress: '{done}/{total} 位作者', unsyncedN: '{n} 未同步', expandAll: '全部展开', collapseAll: '全部收起',
   },
   connections: {
     title: '连接管理', signIn: '登录 {platform}', signInAgain: '重新登录', awaiting: '已在浏览器中打开 {platform}，完成登录后回到这里。',
@@ -94,6 +96,13 @@ export default {
     errors: { expired: '{platform} 连接已失效', notConnected: '{platform} 未连接', nothingSaved: '没有保存任何文章' },
     scope: { one: '{name}', many: '{name} 等 {n} 位作者' },
     positions: '第 {n} 位',
+  },
+  picker: { search: '搜索作者、ID 或平台', platforms: '平台', all: '全部平台', none: '没有匹配的作者', selected: '已选 {n} 位', authors: '作者', allAuthors: '全部作者', allPlatforms: '全部平台', platformsCount: '{n} 个平台', authorsCount: '{n} 位作者' },
+  folders: {
+    title: { database: '选择数据库文件夹', export: '选择导出文件夹' }, places: '常用位置', thisPc: '此电脑', drive: '本地磁盘 ({name})',
+    place: { desktop: '桌面', documents: '文档', downloads: '下载', pictures: '图片' },
+    up: '上一级', newFolder: '新建文件夹', newFolderName: '新建文件夹', choose: '选择此文件夹', empty: '这个文件夹是空的',
+    library: 'PostPock 数据库', notFound: '找不到这个文件夹',
   },
   settings: {
     title: '设置', general: '常规', data: '数据', language: '语言', theme: '主题', light: '浅色', dark: '深色',

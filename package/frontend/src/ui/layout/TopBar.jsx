@@ -7,7 +7,7 @@ import { Icon } from '../icons/Icon.jsx';
 import { LogoMark } from '../icons/Logo.jsx';
 import { IconButton } from '../components/controls.jsx';
 import { Popover, Tooltip } from '../components/overlay.jsx';
-import { ProgressRing, StatusDot } from '../components/feedback.jsx';
+import { StatusDot } from '../components/feedback.jsx';
 import { TasksPanel } from '../features/tasks/TasksPanel.jsx';
 import { ConnectionsPanel } from '../features/connections/ConnectionsPanel.jsx';
 import s from './TopBar.module.css';
@@ -85,12 +85,21 @@ function TasksButton({ art }) {
   return (
     <>
       <Tooltip label={active ? t('bar.running', { n: active }) : t('bar.tasks')}>
-        <button ref={ref} type="button" aria-label={t('bar.tasks')} aria-expanded={open} className={`${s.iconBtn} ${art ? s.iconArt : ''} ${open ? s.iconOn : ''}`} onClick={() => setOpen((o) => !o)}>
-          {cur
-            ? <ProgressRing value={p} size={30} stroke={2}><Icon name="tasks" size={16} /></ProgressRing>
-            : <Icon name="tasks" size={19} />}
-          {active > 0 && <span className={s.count}>{active}</span>}
-        </button>
+        {cur ? (
+          // a running task turns the button into a small pill: the fill and the count both move with the work
+          <button ref={ref} type="button" aria-label={t('bar.tasks')} aria-expanded={open} style={{ '--p': p }}
+            className={`${s.taskPill} ${art ? s.taskPillArt : ''} ${open ? s.iconOn : ''}`} onClick={() => setOpen((o) => !o)}>
+            <span className={s.taskFill} data-indeterminate={!cur.total} />
+            <Icon name="tasks" size={16} className={s.taskSpin} />
+            <span className={`${s.taskNum} num`}>{cur.total ? `${cur.processed}/${cur.total}` : t(`tasks.stages.${cur.stage}`)}</span>
+            {active > 1 && <span className={`${s.taskMore} num`}>+{active - 1}</span>}
+          </button>
+        ) : (
+          <button ref={ref} type="button" aria-label={t('bar.tasks')} aria-expanded={open} className={`${s.iconBtn} ${art ? s.iconArt : ''} ${open ? s.iconOn : ''}`} onClick={() => setOpen((o) => !o)}>
+            <Icon name="tasks" size={19} />
+            {active > 0 && <span className={s.count}>{active}</span>}
+          </button>
+        )}
       </Tooltip>
       <Popover open={open} onClose={() => setOpen(false)} anchor={ref} placement="bottom-end" label={t('tasks.title')} className={s.panel}>
         <TasksPanel />

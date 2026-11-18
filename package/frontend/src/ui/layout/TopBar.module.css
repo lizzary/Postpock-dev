@@ -131,6 +131,38 @@
 
 .panel { width: 400px; }
 
+.taskPill {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 11px 0 10px;
+  overflow: hidden;
+  border-radius: var(--r-2);
+  background: var(--field);
+  box-shadow: 0 0 0 1px var(--line) inset;
+  color: var(--ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  isolation: isolate;
+  transition: background-color var(--dur-1);
+}
+.taskPill:hover, .taskPill.iconOn { background: var(--hover); }
+.taskFill { position: absolute; inset: 0; z-index: -1; background: var(--star-soft); transform-origin: left; transform: scaleX(var(--p)); transition: transform 600ms var(--ease-out); }
+.taskFill::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: var(--star); }
+.taskFill[data-indeterminate='true'] { transform: none; animation: taskBreath 1.6s ease-in-out infinite; }
+@keyframes taskBreath { 50% { opacity: 0.45; } }
+.taskSpin { flex-shrink: 0; color: var(--star-ink); }
+.taskNum { min-width: 0; }
+.taskMore { padding: 0 5px; border-radius: 7px; background: color-mix(in srgb, var(--ink) 10%, transparent); font-size: 11px; line-height: 15px; }
+.taskPillArt { background: rgba(246, 241, 228, 0.1); box-shadow: 0 0 0 1px rgba(246, 241, 228, 0.18) inset; color: #fffaf0; }
+.taskPillArt:hover, .taskPillArt.iconOn { background: rgba(246, 241, 228, 0.16); }
+.taskPillArt .taskFill { background: rgba(232, 194, 96, 0.22); }
+.taskPillArt .taskSpin { color: var(--star); }
+.taskPillArt .taskMore { background: rgba(246, 241, 228, 0.16); }
+
 @media (max-width: 1180px) {
   .crumbs { display: none; }
   .action span { display: none; }

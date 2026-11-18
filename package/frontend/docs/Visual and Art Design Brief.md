@@ -208,6 +208,14 @@ Reuse before creating. All live in `src/ui/components/`:
   handling and scroll locking.
 - `Calendar` / `DateField`, `Picture` (fade-in image with focus crop), `Avatar`, `Pagination`, `ProgressBar`,
   `ProgressRing`, `Spinner`, `Empty`, `StatusDot`, `PlatformMark`, `toast()`.
+- `AuthorSelector` (AuthorSelector.jsx) — the one way to choose authors anywhere (export, sync, search). `split`
+  layout: platform column + author grid + selected tray, for popovers; `stacked` layout: collapsible platform
+  sections, for side panes. It is built to stay usable with dozens of platforms and hundreds of authors, so new
+  features that pick authors or platforms should reuse it rather than list them as chips.
+- `FolderPicker` (features/folders) — the in-app folder browser; every "choose a folder" action goes through it.
+
+Scale rule: any list of platforms or authors must assume dozens of each. Show a summary (count, first names,
+stacked avatars) and open the full selector on demand; never lay every option out on the page.
 
 A new component should: use only tokens; work in both themes; have hover, active, focus-visible and disabled states;
 animate in with the shared easings; and stay under the "quiet" level unless it is the primary action.

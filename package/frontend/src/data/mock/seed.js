@@ -50,7 +50,63 @@ const AUTHORS = [
 
 export const CUSTOM_PLATFORMS = [
   { id: 'booth', name: 'BOOTH', kind: 'custom', color: '#d98a4e', site: 'https://booth.pm', authorUrl: 'https://{handle}.booth.pm', i18n: {} },
+  ...[
+    ['ci-en', 'Ci-en', '#c46f9e', 'heart'], ['skeb', 'Skeb', '#4f9a86', null], ['gumroad', 'Gumroad', '#d4697f', 'bag'],
+    ['pixiv', 'pixiv', '#4a8fd0', null], ['kofi', 'Ko-fi', '#6f7fcf', 'heart'], ['subscribestar', 'SubscribeStar', '#c9a24a', 'star'],
+    ['dlsite', 'DLsite', '#5f7fb0', 'book'], ['itch', 'itch.io', '#d9665a', null], ['lofter', 'LOFTER', '#5aa38a', 'leaf'],
+    ['bilibili', 'bilibili', '#6aa6d6', null], ['mihuashi', '米画师', '#e0904f', 'brush'], ['afdian', '爱发电', '#9a72c4', 'heart'],
+    ['youtube', 'YouTube', '#c9605a', 'music'], ['twitch', 'Twitch', '#8a6fc0', null], ['misskey', 'Misskey', '#8aa65a', 'cloud'],
+    ['bluesky', 'Bluesky', '#5b8fd6', 'cloud'], ['tumblr', 'Tumblr', '#4b5f80', null], ['artstation', 'ArtStation', '#4f86b8', 'camera'],
+    ['personal', '个人网站', '#6b7280', 'globe'], ['comiket', 'Comiket 通贩', '#b0805a', 'book'],
+  ].map(([id, name, color, icon]) => ({ id, name, kind: 'custom', color, icon, site: '', authorUrl: '', i18n: {} })),
 ];
+
+// ------------------------------------------------------------------ a larger crowd of authors
+// Generated, lighter-weight authors so the library behaves like a real one with dozens of platforms.
+const JA_FAMILY = ['桜井', '柚木', '綾瀬', '七瀬', '夏目', '朝比奈', '星野', '月島', '一ノ瀬', '藤宮', '白石', '水瀬', '小鳥遊', '神楽', '真白', '鳴海', '橘', '早乙女'];
+const JA_GIVEN = ['ことね', 'みお', 'ゆい', 'しずく', 'ひなた', 'りん', 'かえで', 'つむぎ', 'のどか', 'まひろ', 'すず', 'あおい'];
+const ZH_NAMES = ['青柚', '南栀', '鹿野', '小满', '阿槐', '星屿', '雾灯', '橘子汽水', '山茶', '半夏', '纸鸢', '白露', '听雨', '木棉', '秋刀鱼', '晚风'];
+const EN_A = ['Maple', 'Juniper', 'Willow', 'Hazel', 'Rowan', 'Saffron', 'Indigo', 'Marigold', 'Cobalt', 'Fennel', 'Briar', 'Sorrel'];
+const EN_B = ['Studio', 'Atelier', 'Works', 'Ink', 'Press', 'Garden', 'Lane', 'Draws'];
+const BIOS = {
+  ja: ['季節のイラストとキャラクターデザイン。', '同人誌の進捗と過去作のまとめ。', '女の子と背景をゆっくり描いています。', '月に数回、高解像度版を更新します。'],
+  zh: ['画一些安静的风景和女孩子。', '同人与原创插画，偶尔更新教程。', '每月整理一次高清图包。', '喜欢画猫、花和下雨天。'],
+  en: ['Illustration, character design and monthly packs.', 'Cozy comics and process videos.', 'Landscapes, little towns and quiet rooms.', 'Sketches, studies and the occasional zine.'],
+};
+const CROWD = [
+  ['fanbox', 26, 'ja'], ['fantia', 14, 'ja'], ['patreon', 9, 'en'], ['x', 8, 'ja'], ['booth', 4, 'zh'],
+  ['ci-en', 6, 'ja'], ['skeb', 5, 'ja'], ['gumroad', 4, 'en'], ['pixiv', 9, 'ja'], ['kofi', 4, 'en'], ['subscribestar', 3, 'en'],
+  ['dlsite', 3, 'ja'], ['itch', 3, 'en'], ['lofter', 6, 'zh'], ['bilibili', 5, 'zh'], ['mihuashi', 4, 'zh'], ['afdian', 7, 'zh'],
+  ['youtube', 2, 'en'], ['twitch', 2, 'en'], ['misskey', 3, 'ja'], ['bluesky', 3, 'en'], ['tumblr', 2, 'en'], ['artstation', 4, 'en'],
+  ['personal', 3, 'zh'], ['comiket', 2, 'ja'],
+];
+const ANIMALS = ['cat', 'rabbit', 'bear', 'fox', 'owl', 'penguin', 'frog', 'chick'];
+const PALS = ['dusk', 'dawn', 'mint', 'lagoon', 'lavender', 'sakura', 'forest', 'amber', 'night', 'slate', 'peach', 'sage', 'deep'];
+const STYLES = ['hills', 'moonlit', 'sea', 'botanic', 'bauhaus', 'waves', 'town'];
+const BANNERS = ['swirl', 'dawnhills', 'tide', 'snowfield', 'cloudland', 'mosaic', 'meadow', 'lanterns'];
+const SYNCABLE = new Set(['fanbox', 'fantia', 'patreon', 'x']);
+let crowdSeq = 0;
+const usedNames = new Set();
+for (const [platform, n, lang] of CROWD) {
+  for (let k = 0; k < n; k++) {
+    const i = crowdSeq++;
+    const r = seeded(`crowd|${i}`);
+    const name = lang === 'ja' ? `${JA_FAMILY[(i * 7) % JA_FAMILY.length]}${JA_GIVEN[(i * 7 + Math.floor(i / 4)) % JA_GIVEN.length]}`
+      : lang === 'zh' ? `${ZH_NAMES[(i * 3 + k) % ZH_NAMES.length]}${k > 1 ? `_${k}` : ''}`
+        : `${EN_A[(i * 5) % EN_A.length]} ${EN_B[(i + k) % EN_B.length]}`;
+    let unique = name, dup = 2;
+    while (usedNames.has(unique)) unique = lang === 'en' ? `${name} ${dup++}` : `${name}${'あいうえおかきくけこ'[dup++ % 10]}`;
+    usedNames.add(unique);
+    const pal = PALS[i % PALS.length], pal2 = PALS[(i + 4) % PALS.length];
+    const checked = SYNCABLE.has(platform) && platform !== 'patreon' && platform !== 'x' ? (platform === 'fantia' ? 24 : r.int(1, 6)) : null;
+    AUTHORS.push({
+      key: `c${i}`, platform, name: unique, handle: `${platform}-${i}`, lang, bio: BIOS[lang][i % 4],
+      avatar: [ANIMALS[i % ANIMALS.length], pal], banner: i % 3 ? { default: BANNERS[i % BANNERS.length] } : { art: [STYLES[i % STYLES.length], pal] },
+      palettes: [pal, pal2], styles: [STYLES[i % STYLES.length], STYLES[(i + 2) % STYLES.length]],
+      count: r.int(3, 14), newest: r.int(0, 60), gap: [3, 18], unsynced: checked != null ? r.int(0, 4) : 0, expired: checked != null && r.chance(0.3) ? 1 : 0, checked,
+    });
+  }
+}
 
 // ------------------------------------------------------------------ dates
 const pad = (n) => String(n).padStart(2, '0');
@@ -96,7 +152,7 @@ function buildAuthor(spec, index) {
   const total = spec.count + spec.unsynced + spec.expired;
   const metas = [];
   let age = spec.newest;
-  let rid = (REMOTE_START[spec.platform] ?? 0) - index * 1_037 - spec.newest * 900;
+  let rid = (REMOTE_START[spec.platform] ?? 5_400_000) - index * 1_037 - spec.newest * 900;
   for (let i = 0; i < total; i++) {
     const tr = seeded(`${spec.key}|meta|${i}`);
     rid -= tr.int(180, 1_300);
@@ -139,7 +195,7 @@ export function buildPost(spec, author, meta, postId, nextFileId) {
   let indexInPost = 0, imageIndex = 0;
   const addFile = (f) => { const file = { id: nextFileId(), postId, ...f, indexInPost: ++indexInPost }; files.push(file); return file.id; };
 
-  const [cw, ch] = COVER_DIMS[spec.platform];
+  const [cw, ch] = COVER_DIMS[spec.platform] ?? [1200, 760];
   const coverId = addFile({ name: 'cover', ext: 'jpg', size: r.int(180, 640) * 1024, resource: 'cover', width: cw, height: ch, url: artwork(`${meta.remoteId}-cover`, style, palette, cw, ch) });
 
   const p = (k) => PARAGRAPHS[lang][(meta.i + k) % PARAGRAPHS[lang].length];

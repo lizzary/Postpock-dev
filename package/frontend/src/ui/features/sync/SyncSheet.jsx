@@ -3,12 +3,11 @@ import { syncActions, useChecklists, useSyncScope, useTasks } from '../../../bri
 import { useT } from '../../../i18n/index.jsx';
 import { useFormat } from '../../lib/format.js';
 import { Icon } from '../../icons/Icon.jsx';
-import { Button, Checkbox, IconButton } from '../../components/controls.jsx';
+import { Button, IconButton } from '../../components/controls.jsx';
 import { Popover, Sheet } from '../../components/overlay.jsx';
 import { Empty, ProgressBar, StatusDot } from '../../components/feedback.jsx';
-import { Avatar } from '../../components/media.jsx';
-import { PlatformMark } from '../../components/platform.jsx';
 import { ConnectionsPanel } from '../connections/ConnectionsPanel.jsx';
+import { AuthorSelector } from '../../components/AuthorSelector.jsx';
 import { Checklist } from './Checklist.jsx';
 import s from './SyncSheet.module.css';
 
@@ -49,7 +48,7 @@ export default function SyncSheet({ open, onClose, scope, authorId, nonce }) {
         </header>
         <div className={s.main}>
           <ScopePane data={scopeData} chosen={chosen} setChosen={setChosen} onCheck={runCheck} checkable={checkable.length} checkId={checkId} />
-          <ChecklistPane authorIds={chosenList} onCheck={runCheck} checkable={checkable.length}
+          <ChecklistPane authorIds={chosenList} onCheck={runCheck} checkable={checkable.length} platforms={platforms}
             blocked={[...new Set((scopeData?.authors ?? []).filter((a) => chosen.has(a.id) && !connected(a.platformId)).map((a) => a.platformId))]
               .map((pid) => platforms.find((p) => p.id === pid)).filter((p) => p?.syncable)} />
         </div>
@@ -68,53 +67,27 @@ function ScopePane({ data, chosen, setChosen, onCheck, checkable, checkId }) {
   const connectAnchor = useRef(null);
   if (!data) return <aside className={s.scope} />;
 
-  const toggle = (ids, on) => setChosen((cur) => { const n = new Set(cur); for (const id of ids) (on ? n.add(id) : n.delete(id)); return n; });
-  const groups = data.platforms.map((p) => ({ p, authors: data.authors.filter((a) => a.platformId === p.id) })).filter((g) => g.authors.length);
+  const syncable = data.platforms.filter((p) => p.syncable);
+  const live = (pid) => data.platforms.find((p) => p.id === pid)?.connection === 'connected';
 
   return (
     <aside className={s.scope}>
       <div className={s.paneTitle}><span className={s.step}>1</span>{t('sync.scope')}</div>
-      <div className={s.scopeList}>
-        {groups.map(({ p, authors }) => {
-          const usable = p.syncable && p.connection === 'connected';
-          const ids = authors.map((a) => a.id);
-          const n = ids.filter((id) => chosen.has(id)).length;
-          return (
-            <section key={p.id} className={s.platform} data-usable={usable}>
-              <div className={s.platformHead}>
-                <Checkbox checked={n === ids.length} indeterminate={n > 0 && n < ids.length} disabled={!usable} onChange={(on) => toggle(ids, on)}
-                  label={<span className={s.platformName}><PlatformMark platform={p} size={20} />{p.name}</span>} />
-                {p.kind === 'builtin'
-                  ? (usable
-                    ? <span className={s.connOk}><StatusDot status="connected" /></span>
-                    : <Button size="sm" variant="ghost" className={s.connect} data-status={p.connection} onClick={(e) => { connectAnchor.current = e.currentTarget; setConnectFor(p.id); }}>
-                        <StatusDot status={p.connection} />{t('sync.connect')}
-                      </Button>)
-                  : <span className={s.customNote}>{t('status.custom')}</span>}
-              </div>
-              {p.syncable && (
-                <ul className={s.authors}>
-                  {authors.map((a) => (
-                    <li key={a.id}>
-                      <Checkbox className={s.authorRow} checked={chosen.has(a.id)} disabled={!usable && !chosen.has(a.id)} onChange={(on) => toggle([a.id], on)}
-                        label={
-                          <span className={s.author}>
-                            <Avatar src={a.avatar} name={a.name} size={30} />
-                            <span className={s.authorText}>
-                              <span className={s.authorName}>{a.name}</span>
-                              <span className={s.authorMeta}>{a.checkedAt ? t('sync.checkedAt', { date: fmt.relative(a.checkedAt) }) : t('sync.neverChecked')}</span>
-                            </span>
-                            {a.counts?.unsynced > 0 && <span className={`${s.badge} num`}>{a.counts.unsynced}</span>}
-                          </span>
-                        } />
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </section>
-          );
-        })}
-      </div>
+      <AuthorSelector layout="stacked" className={s.scopeList}
+        authors={data.authors} platforms={syncable} value={[...chosen]} onChange={(ids) => setChosen(new Set(ids))}
+        isDisabled={(a) => !live(a.platformId) && !chosen.has(a.id)}
+        platformAside={(p) => (live(p.id)
+          ? <StatusDot status="connected" />
+          : <button type="button" className={s.connect} data-status={p.connection}
+              onClick={(e) => { e.stopPropagation(); connectAnchor.current = e.currentTarget; setConnectFor(p.id); }}>
+              <StatusDot status={p.connection} />{t('sync.connect')}
+            </button>)}
+        authorMeta={(a) => (
+          <span className={s.authorMeta}>
+            {a.checkedAt ? t('sync.checkedAt', { date: fmt.relative(a.checkedAt) }) : t('sync.neverChecked')}
+            {a.counts?.unsynced > 0 && <span className={`${s.badge} num`}>{t('sync.unsyncedN', { n: a.counts.unsynced })}</span>}
+          </span>
+        )} />
       <div className={s.scopeFoot}>
         {running ? (
           <div className={s.checking}>
@@ -138,7 +111,7 @@ function ScopePane({ data, chosen, setChosen, onCheck, checkable, checkId }) {
   );
 }
 
-function ChecklistPane({ authorIds, onCheck, checkable, blocked }) {
+function ChecklistPane({ authorIds, onCheck, checkable, blocked, platforms }) {
   const t = useT();
   const { data: lists, loading } = useChecklists(authorIds);
   const [connect, setConnect] = useState(null);
@@ -167,5 +140,5 @@ function ChecklistPane({ authorIds, onCheck, checkable, blocked }) {
       </section>
     );
   }
-  return <Checklist lists={checked} />;
+  return <Checklist lists={checked} platforms={platforms} />;
 }

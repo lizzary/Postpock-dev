@@ -161,16 +161,17 @@ export function TemplateInput({ value, onChange, catalog, prefix, suffix, invali
   useLayoutEffect(() => {
     const ln = line.current, cr = caret.current;
     if (!ln || !cr) return;
+    // the caret is centred on the atom it stands beside (text or chip), so it always sits on the text line
     const base = ln.getBoundingClientRect();
-    let x = 0, y = 0, h = 22;
+    const CARET = 20, LINE = 32;
+    let x = 0, mid = LINE / 2;
+    const at = (el, right) => { const r = el.getBoundingClientRect(); x = (right ? r.right : r.left) - base.left; mid = r.top + r.height / 2 - base.top; };
     const comp = ln.querySelector('[data-compose]');
-    const at = (el, right) => { const r = el.getBoundingClientRect(); x = (right ? r.right : r.left) - base.left; y = r.top - base.top; h = r.height; };
     if (comp) at(comp, true);
     else if (sel.f < atoms.length) at(ln.querySelector(`[data-i="${sel.f}"]`), false);
     else if (atoms.length) at(ln.querySelector(`[data-i="${atoms.length - 1}"]`), true);
-    else { y = 4; }
-    cr.style.transform = `translate(${x}px, ${y + (h - 22) / 2}px)`;
-    ta.current.style.transform = `translate(${x}px, ${y}px)`;
+    cr.style.transform = `translate(${Math.round(x)}px, ${Math.round(mid - CARET / 2)}px)`;
+    ta.current.style.transform = `translate(${Math.round(x)}px, ${Math.round(mid - LINE / 2)}px)`;
   });
 
   const remove = (i) => removeRange(i, i + 1);

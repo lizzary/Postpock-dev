@@ -81,20 +81,20 @@
 
 .sheetScrim { backdrop-filter: blur(4px) saturate(0.85); }
 .sheet {
-  position: absolute;
-  inset: 22px 22px 0;
+  position: relative;
   display: flex;
   flex-direction: column;
+  width: min(1240px, calc(100vw - 48px));
+  height: min(820px, calc(100vh - 56px));
   background: var(--bg);
   border: 1px solid var(--line);
-  border-bottom: 0;
-  border-radius: 14px 14px 0 0;
+  border-radius: 14px;
   box-shadow: var(--shadow-3);
   overflow: hidden;
-  transition: transform 520ms var(--ease-out), opacity 300ms var(--ease-out);
+  transition: transform 460ms var(--ease-out), opacity 280ms var(--ease-out);
 }
-.layer[data-state='enter'] .sheet { transform: translateY(42px); opacity: 0; }
-.layer[data-state='exit'] .sheet { transform: translateY(32px); opacity: 0; transition-duration: 320ms; }
+.layer[data-state='enter'] .sheet { transform: translateY(24px) scale(0.985); opacity: 0; }
+.layer[data-state='exit'] .sheet { transform: translateY(14px) scale(0.99); opacity: 0; transition-duration: 260ms; }
 
 .tooltip {
   position: fixed;

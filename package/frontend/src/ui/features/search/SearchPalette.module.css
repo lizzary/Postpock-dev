@@ -22,12 +22,22 @@
 .input:focus, .input:focus-visible { box-shadow: none; }
 .esc { padding: 3px 8px; border-radius: var(--r-1); box-shadow: 0 0 0 1px var(--line-2) inset; font: 500 11.5px/1.4 var(--font-sans); color: var(--ink-3); cursor: pointer; }
 
-.domains { display: flex; flex-direction: column; gap: 10px; padding: 0 20px 16px 22px; border-bottom: 1px solid var(--line); }
-.domainsLabel { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; color: var(--ink-3); }
-.domainChips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.sep { width: 1px; height: 18px; margin: 0 6px; background: var(--line-2); }
-.picked { display: flex; flex-wrap: wrap; gap: 6px; }
-.pickedAuthor { display: inline-flex; align-items: center; gap: 7px; height: 28px; padding: 0 8px 0 4px; border-radius: var(--r-2); background: var(--star-soft); font-size: 13px; color: var(--ink); }
+.domains { display: flex; flex-direction: column; gap: 8px; padding: 0 16px 12px 18px; border-bottom: 1px solid var(--line); }
+.domainRow { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.fields { display: inline-flex; padding: 2px; border-radius: var(--r-2); background: var(--field); }
+.field { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border-radius: 5px; font-size: 12.5px; color: var(--ink-3); transition: background-color var(--dur-1), color var(--dur-1); }
+.field:hover { color: var(--ink); }
+.field[aria-pressed='true'] { background: var(--bg-raised); color: var(--ink); box-shadow: 0 0 0 1px var(--line), var(--shadow-1); }
+.sep { width: 1px; height: 18px; margin: 0 4px; background: var(--line-2); }
+.scopeBtn { display: inline-flex; align-items: center; gap: 6px; max-width: 180px; height: 30px; padding: 0 8px 0 10px; border-radius: var(--r-2); box-shadow: 0 0 0 1px var(--line-2) inset; font-size: 12.5px; color: var(--ink-2); }
+.scopeBtn span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scopeBtn:hover, .scopeBtn[aria-expanded='true'] { box-shadow: 0 0 0 1px var(--ink-4) inset; color: var(--ink); }
+.scopeBtn[data-on='true'] { background: var(--star-soft); color: var(--ink); box-shadow: 0 0 0 1px color-mix(in srgb, var(--star) 55%, transparent) inset; }
+.reset { height: 30px; padding: 0 8px; border-radius: var(--r-2); font-size: 12.5px; color: var(--ink-3); }
+.reset:hover { background: var(--hover); color: var(--ink); }
+.picked { display: flex; flex-wrap: nowrap; gap: 5px; overflow: hidden; mask-image: linear-gradient(90deg, #000 calc(100% - 40px), transparent); }
+.pickedMore { flex-shrink: 0; align-self: center; padding: 0 4px; font-size: 12px; color: var(--ink-3); }
+.pickedAuthor { flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px; height: 26px; white-space: nowrap; padding: 0 8px 0 4px; border-radius: var(--r-2); background: var(--star-soft); font-size: 13px; color: var(--ink); }
 .pickedAuthor svg { color: var(--ink-3); }
 .pickedAuthor:hover svg { color: var(--ink); }
 
@@ -54,13 +64,17 @@
 .go { flex-shrink: 0; color: var(--ink-4); opacity: 0; transform: translateX(-4px); transition: opacity var(--dur-2), transform var(--dur-2) var(--ease-out); }
 .hit[data-active='true'] .go { opacity: 1; transform: none; color: var(--ink-2); }
 
-.picker { width: 280px; }
+.picker { width: 300px; }
 .pickerSearch { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-bottom: 1px solid var(--line); color: var(--ink-3); }
 .pickerSearch input { flex: 1; border: 0; background: none; font-size: 14px; color: var(--ink); }
 .pickerSearch input:focus-visible { box-shadow: none; }
-.pickerList { max-height: 300px; overflow: auto; padding: 6px; }
+.pickerList { max-height: 340px; overflow: auto; padding: 6px; }
 .pickerRow { display: flex; width: 100%; padding: 6px 8px; border-radius: var(--r-2); }
 .pickerRow:hover { background: var(--hover); }
-.pickerItem { display: inline-flex; align-items: center; gap: 9px; min-width: 0; }
+.pickerItem { display: flex; align-items: center; gap: 9px; min-width: 0; width: 100%; }
+.pickerRow > span:last-child { flex: 1; min-width: 0; }
 .pickerName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
-.pickerPlat { font-size: 12px; color: var(--ink-3); }
+.pickerPlat { margin-left: auto; font-size: 12px; color: var(--ink-3); }
+.pickerFoot { display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-3); }
+.pickerFoot button { padding: 2px 6px; border-radius: var(--r-1); color: var(--ink-2); }
+.pickerFoot button:hover { background: var(--hover); color: var(--ink); }

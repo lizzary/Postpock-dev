@@ -96,7 +96,6 @@ export const exporter = {
   start: (config) => call('write', () => backend.startExport(config)),
   lastConfig: (scope) => call('read', () => backend.getLastExportConfig(scope)),
   saveConfig: (scope, config) => { call('write', () => backend.saveLastExportConfig(scope, config)).catch(() => {}); },
-  pickDirectory: () => call('write', () => backend.pickDirectory('export')),
   /** Free text typed into a file-name template, without the characters a file name cannot hold. */
   filterText: (text) => stripIllegal(text),
   validate: (template) => validateTemplate(template),
@@ -106,7 +105,13 @@ export const exporter = {
 export const settings = {
   ...live('settings', backend.getSettings),
   update: (patch) => call('write', () => backend.updateSettings(patch)),
-  pickDatabaseDirectory: () => call('write', () => backend.pickDirectory('database')),
+};
+
+// ------------------------------------------------------------------ folders (for the folder picker)
+export const folders = {
+  roots: () => call('read', backend.fsRoots),
+  list: (path) => call('read', () => backend.fsList(path)),
+  create: (dir, name) => call('write', () => backend.fsCreateFolder(dir, name)),
 };
 
 // ------------------------------------------------------------------ media

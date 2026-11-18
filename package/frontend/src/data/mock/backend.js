@@ -607,11 +607,60 @@ export function startExport(cfg) {
 export function getLastExportConfig(scope) { return lib().prefs.exports[scope] ?? null; }
 export function saveLastExportConfig(scope, cfg) { const L = lib(); L.prefs.exports[scope] = cfg; savePrefs(L); }
 
-const EXPORT_DIRS = ['D:\\Exports\\PostPock', 'E:\\Archive\\Illustrations', 'C:\\Users\\Mio\\Pictures\\PostPock'];
-let dirPick = 0;
-export function pickDirectory(kind) {
-  if (kind === 'database') return config.dbPath === DEFAULT_DB_PATH ? 'E:\\Archive\\PostPock' : DEFAULT_DB_PATH;
-  return EXPORT_DIRS[dirPick++ % EXPORT_DIRS.length];
+// ------------------------------------------------------------------ file system (folder browsing for pickers)
+// The Go service lists real directories; the mock keeps a small believable tree in memory.
+const FS = {
+  'C:\\': ['Program Files', 'Users'],
+  'C:\\Program Files': ['PostPock'],
+  'C:\\Program Files\\PostPock': ['data'],
+  'C:\\Program Files\\PostPock\\data': [],
+  'C:\\Users': ['Mio'],
+  'C:\\Users\\Mio': ['Desktop', 'Documents', 'Downloads', 'Pictures'],
+  'C:\\Users\\Mio\\Desktop': [], 'C:\\Users\\Mio\\Documents': ['PostPock'], 'C:\\Users\\Mio\\Documents\\PostPock': [],
+  'C:\\Users\\Mio\\Downloads': [], 'C:\\Users\\Mio\\Pictures': ['Screenshots', 'Wallpapers'],
+  'C:\\Users\\Mio\\Pictures\\Screenshots': [], 'C:\\Users\\Mio\\Pictures\\Wallpapers': [],
+  'D:\\': ['Exports', 'Games', 'PostPock'],
+  'D:\\Exports': ['PostPock', 'Old'], 'D:\\Exports\\PostPock': [], 'D:\\Exports\\Old': [], 'D:\\Games': [],
+  'D:\\PostPock': ['data', 'backup'], 'D:\\PostPock\\data': [], 'D:\\PostPock\\backup': [],
+  'E:\\': ['Archive', 'Illustrations'],
+  'E:\\Archive': ['PostPock', '2025'], 'E:\\Archive\\PostPock': [], 'E:\\Archive\\2025': [],
+  'E:\\Illustrations': ['References'], 'E:\\Illustrations\\References': [],
+};
+const parentOf = (path) => { const i = path.replace(/\\$/, '').lastIndexOf('\\'); return i < 0 ? null : i === 2 ? path.slice(0, 3) : path.slice(0, i); };
+const joinPath = (dir, name) => (dir.endsWith('\\') ? dir + name : `${dir}\\${name}`);
+
+/** Drives and the current user's common folders. */
+export function fsRoots() {
+  return {
+    drives: Object.keys(FS).filter((p) => p.length === 3).map((p) => ({ name: p.slice(0, 2), path: p })),
+    places: [
+      { id: 'desktop', path: 'C:\\Users\\Mio\\Desktop' }, { id: 'documents', path: 'C:\\Users\\Mio\\Documents' },
+      { id: 'downloads', path: 'C:\\Users\\Mio\\Downloads' }, { id: 'pictures', path: 'C:\\Users\\Mio\\Pictures' },
+    ],
+  };
+}
+/** Sub-folders of a folder; `library` marks folders that already hold a PostPock database. */
+export function fsList(path) {
+  let dir = String(path ?? '').trim().replace(/\//g, '\\');
+  if (/^[a-z]:\\?$/i.test(dir)) dir = `${dir.slice(0, 2).toUpperCase()}\\`;
+  else dir = dir.replace(/\\+$/, '');
+  if (dir) dir = dir[0].toUpperCase() + dir.slice(1);
+  const children = FS[dir];
+  if (!children) return { ok: false, path: dir };
+  return {
+    ok: true, path: dir, parent: parentOf(dir),
+    entries: [...children].sort((a, b) => a.localeCompare(b)).map((name) => {
+      const full = joinPath(dir, name);
+      return { name, path: full, library: libraries.has(full) || full === DEFAULT_DB_PATH, empty: !FS[full]?.length };
+    }),
+  };
+}
+export function fsCreateFolder(dir, name) {
+  const clean = name.replace(/[<>:"/\\|?*]/g, '').trim();
+  if (!clean || !FS[dir] || FS[dir].includes(clean)) return { ok: false };
+  FS[dir].push(clean);
+  FS[joinPath(dir, clean)] = [];
+  return { ok: true, path: joinPath(dir, clean) };
 }
 
 // ------------------------------------------------------------------ settings

@@ -4,11 +4,15 @@ import { navigate, paths } from '../../../app/router.jsx';
 import { useT } from '../../../i18n/index.jsx';
 import { useFormat } from '../../lib/format.js';
 import { Icon } from '../../icons/Icon.jsx';
-import { Checkbox, Chip } from '../../components/controls.jsx';
+import { Checkbox } from '../../components/controls.jsx';
+import { PlatformMark } from '../../components/platform.jsx';
+import { AuthorSelector } from '../../components/AuthorSelector.jsx';
 import { Popover, Portal, usePresence, useScrollLock } from '../../components/overlay.jsx';
 import { Spinner } from '../../components/feedback.jsx';
 import { Avatar, Picture } from '../../components/media.jsx';
 import s from './SearchPalette.module.css';
+
+const MAX_TOKENS = 8;
 
 function Marked({ text, ranges }) {
   if (!ranges?.length) return text;
@@ -31,6 +35,8 @@ export default function SearchPalette({ open, onClose, authorId, nonce }) {
   const [domains, setDomains] = useState(() => initialDomains(authorId));
   const [active, setActive] = useState(0);
   const [pickAuthors, setPickAuthors] = useState(false);
+  const [pickPlatforms, setPickPlatforms] = useState(false);
+  const platformBtn = useRef(null);
   const input = useRef(null);
   const authorChip = useRef(null);
   const list = useRef(null);
@@ -60,7 +66,12 @@ export default function SearchPalette({ open, onClose, authorId, nonce }) {
   const toggle = (k) => setDomains((d) => ({ ...d, [k]: !d[k] }));
   const togglePlatform = (id) => setDomains((d) => ({ ...d, platforms: d.platforms.includes(id) ? d.platforms.filter((x) => x !== id) : [...d.platforms, id] }));
   const toggleAuthor = (id) => setDomains((d) => ({ ...d, authors: d.authors.includes(id) ? d.authors.filter((x) => x !== id) : [...d.authors, id] }));
-  const chosenAuthors = (authors ?? []).filter((a) => domains.authors.includes(a.id));
+  const tokens = [
+    ...(platforms ?? []).filter((p) => domains.platforms.includes(p.id))
+      .map((p) => ({ key: `p:${p.id}`, name: p.name, mark: <PlatformMark platform={p} size={16} />, remove: () => togglePlatform(p.id) })),
+    ...(authors ?? []).filter((a) => domains.authors.includes(a.id))
+      .map((a) => ({ key: `a:${a.id}`, name: a.name, mark: <Avatar src={a.avatar} name={a.name} size={18} />, remove: () => toggleAuthor(a.id) })),
+  ];
   let k = -1;
 
   return (
@@ -75,26 +86,37 @@ export default function SearchPalette({ open, onClose, authorId, nonce }) {
           </div>
 
           <div className={s.domains}>
-            <span className={s.domainsLabel}>{t('search.domains')}</span>
-            <div className={s.domainChips}>
-              {(platforms ?? []).map((p) => (
-                <Chip key={p.id} color={p.color} selected={domains.platforms.includes(p.id)} onClick={() => togglePlatform(p.id)}>{p.name}</Chip>
-              ))}
-              <span className={s.sep} />
-              <Chip icon="text" selected={domains.title} onClick={() => toggle('title')}>{t('search.title')}</Chip>
-              <Chip icon="file" selected={domains.body} onClick={() => toggle('body')}>{t('search.body')}</Chip>
-              <Chip ref={authorChip} icon="user" selected={domains.authors.length > 0} onClick={() => setPickAuthors((v) => !v)}>
-                {domains.authors.length ? t('search.authorsCount', { n: domains.authors.length }) : t('search.author')}
-              </Chip>
-              <Chip icon="image" selected={domains.image} onClick={() => toggle('image')}>{t('search.image')}</Chip>
-            </div>
-            {chosenAuthors.length > 0 && (
-              <div className={s.picked}>
-                {chosenAuthors.map((a) => (
-                  <button key={a.id} type="button" className={s.pickedAuthor} onClick={() => toggleAuthor(a.id)}>
-                    <Avatar src={a.avatar} name={a.name} size={18} />{a.name}<Icon name="close" size={12} />
+            <div className={s.domainRow}>
+              <span className={s.fields} role="group" aria-label={t('search.domains')}>
+                {[['title', 'text'], ['body', 'file'], ['image', 'image']].map(([k, icon]) => (
+                  <button key={k} type="button" className={s.field} aria-pressed={domains[k]} onClick={() => toggle(k)}>
+                    <Icon name={icon} size={14} />{t(`search.${k}`)}
                   </button>
                 ))}
+              </span>
+              <span className={s.sep} />
+              <button ref={platformBtn} type="button" className={s.scopeBtn} data-on={domains.platforms.length > 0} aria-expanded={pickPlatforms} onClick={() => setPickPlatforms((v) => !v)}>
+                <Icon name="globe" size={14} />
+                <span>{domains.platforms.length ? t('picker.platformsCount', { n: domains.platforms.length }) : t('picker.allPlatforms')}</span>
+                <Icon name="chevron-down" size={13} />
+              </button>
+              <button ref={authorChip} type="button" className={s.scopeBtn} data-on={domains.authors.length > 0} aria-expanded={pickAuthors} onClick={() => setPickAuthors((v) => !v)}>
+                <Icon name="user" size={14} />
+                <span>{domains.authors.length ? t('picker.authorsCount', { n: domains.authors.length }) : t('picker.allAuthors')}</span>
+                <Icon name="chevron-down" size={13} />
+              </button>
+              {(domains.platforms.length > 0 || domains.authors.length > 0) && (
+                <button type="button" className={s.reset} onClick={() => setDomains((d) => ({ ...d, platforms: [], authors: [] }))}>{t('common.clear')}</button>
+              )}
+            </div>
+            {tokens.length > 0 && (
+              <div className={s.picked}>
+                {tokens.slice(0, MAX_TOKENS).map((x) => (
+                  <button key={x.key} type="button" className={s.pickedAuthor} onClick={x.remove}>
+                    {x.mark}{x.name}<Icon name="close" size={12} />
+                  </button>
+                ))}
+                {tokens.length > MAX_TOKENS && <span className={s.pickedMore}>+{tokens.length - MAX_TOKENS}</span>}
               </div>
             )}
           </div>
@@ -151,36 +173,46 @@ export default function SearchPalette({ open, onClose, authorId, nonce }) {
         </div>
 
         <Popover open={pickAuthors} onClose={() => setPickAuthors(false)} anchor={authorChip} placement="bottom-start" label={t('search.chooseAuthors')} trapFocus={false}>
-          <AuthorPicker authors={authors ?? []} chosen={domains.authors} onToggle={toggleAuthor} />
+          <AuthorSelector authors={authors ?? []} platforms={platforms ?? []} value={domains.authors} onChange={(ids) => setDomains((d) => ({ ...d, authors: ids }))} autoFocus />
+        </Popover>
+        <Popover open={pickPlatforms} onClose={() => setPickPlatforms(false)} anchor={platformBtn} placement="bottom-start" label={t('picker.platforms')} trapFocus={false}>
+          <PlatformPicker platforms={platforms ?? []} authors={authors ?? []} value={domains.platforms} onToggle={togglePlatform}
+            onClear={() => setDomains((d) => ({ ...d, platforms: [] }))} />
         </Popover>
       </div>
     </Portal>
   );
 }
 
-export function AuthorPicker({ authors, chosen, onToggle, platforms }) {
+/** A searchable list of every platform; picking several searches their union. */
+function PlatformPicker({ platforms, authors, value, onToggle, onClear }) {
   const t = useT();
   const [q, setQ] = useState('');
-  const shown = authors.filter((a) => !q || a.name.toLowerCase().includes(q.toLowerCase()));
+  const shown = platforms.filter((p) => !q || p.name.toLowerCase().includes(q.toLowerCase()));
+  const count = (id) => authors.filter((a) => a.platformId === id).length;
   return (
     <div className={s.picker}>
       <div className={s.pickerSearch}>
         <Icon name="search" size={15} />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('search.chooseAuthors')} autoFocus />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={t('home.findPlatform')} autoFocus />
       </div>
       <ul className={s.pickerList}>
-        {shown.map((a) => (
-          <li key={a.id}>
-            <Checkbox className={s.pickerRow} checked={chosen.includes(a.id)} onChange={() => onToggle(a.id)} label={
+        {shown.map((p) => (
+          <li key={p.id}>
+            <Checkbox className={s.pickerRow} checked={value.includes(p.id)} onChange={() => onToggle(p.id)} label={
               <span className={s.pickerItem}>
-                <Avatar src={a.avatar} name={a.name} size={24} />
-                <span className={s.pickerName}>{a.name}</span>
-                {platforms && <span className={s.pickerPlat}>{platforms.find((p) => p.id === a.platformId)?.name}</span>}
+                <PlatformMark platform={p} size={20} />
+                <span className={s.pickerName}>{p.name}</span>
+                <span className={`${s.pickerPlat} num`}>{count(p.id)}</span>
               </span>
             } />
           </li>
         ))}
       </ul>
+      <div className={s.pickerFoot}>
+        <span>{value.length ? t('picker.platformsCount', { n: value.length }) : t('picker.allPlatforms')}</span>
+        {value.length > 0 && <button type="button" onClick={onClear}>{t('common.clear')}</button>}
+      </div>
     </div>
   );
 }

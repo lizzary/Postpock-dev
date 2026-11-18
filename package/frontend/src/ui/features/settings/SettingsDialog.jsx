@@ -6,6 +6,8 @@ import { Icon } from '../../icons/Icon.jsx';
 import { Button, IconButton, Segmented } from '../../components/controls.jsx';
 import { Dialog } from '../../components/overlay.jsx';
 import { Spinner, toast } from '../../components/feedback.jsx';
+import { navigate, paths } from '../../../app/router.jsx';
+import { FolderPicker } from '../folders/FolderPicker.jsx';
 import s from './SettingsDialog.module.css';
 
 /** Swap the theme with a circle that grows from where it was asked for. */
@@ -40,17 +42,14 @@ export default function SettingsDialog({ open, onClose }) {
     switchTheme(theme, themeRef.current?.querySelector(`[data-selected="false"]`));
     settingsActions.update({ theme });
   };
-  const changeDb = async () => {
+  const [browsing, setBrowsing] = useState(false);
+  // switching databases re-reads everything; start again from the home page of the new library
+  const applyDb = async (path) => {
+    if (!path || path === settings.dbPath) return;
     setPicking(true);
-    const path = await settingsActions.pickDatabaseDirectory();
-    if (path && path !== settings.dbPath) {
-      await settingsActions.update({ dbPath: path });
-      toast(t('settings.dbSwitched'), { tone: 'ok', icon: 'database' });
-    }
+    await settingsActions.update({ dbPath: path });
     setPicking(false);
-  };
-  const resetDb = async () => {
-    await settingsActions.update({ dbPath: settings.defaultDbPath });
+    navigate(paths.home());
     toast(t('settings.dbSwitched'), { tone: 'ok', icon: 'database' });
   };
   const setLanes = (n) => { setThreads(n); settingsActions.update({ syncThreads: n }); };
@@ -78,14 +77,14 @@ export default function SettingsDialog({ open, onClose }) {
         <div className={s.stack}>
           <div className={s.label}><Icon name="database" size={18} />{t('settings.dbPath')}</div>
           <div className={s.pathRow}>
-            <button type="button" className={s.path} onClick={changeDb} disabled={picking} title={settings.dbPath}>
+            <button type="button" className={s.path} onClick={() => setBrowsing(true)} disabled={picking} title={settings.dbPath}>
               <Icon name="folder" size={17} />
               <span className={s.pathText}>{settings.dbPath}</span>
               {picking ? <Spinner size={15} /> : <span className={s.pathAction}>{t('settings.dbChange')}</span>}
             </button>
           </div>
           {settings.dbPath !== settings.defaultDbPath && (
-            <Button variant="quiet" size="sm" icon="undo" className={s.reset} onClick={resetDb}>{t('common.reset')}</Button>
+            <Button variant="quiet" size="sm" icon="undo" className={s.reset} onClick={() => applyDb(settings.defaultDbPath)}>{t('common.reset')}</Button>
           )}
         </div>
         <div className={s.row}>
@@ -103,6 +102,7 @@ export default function SettingsDialog({ open, onClose }) {
           </div>
         </div>
       </section>
+      <FolderPicker open={browsing} onClose={() => setBrowsing(false)} onPick={applyDb} initialPath={settings.dbPath} kind="database" />
       <footer className={s.about}>{t('settings.about', { version: '0.1.0' })}</footer>
     </Dialog>
   );

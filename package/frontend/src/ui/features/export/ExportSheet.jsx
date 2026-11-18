@@ -8,7 +8,8 @@ import { Calendar } from '../../components/calendar.jsx';
 import { Popover, Sheet } from '../../components/overlay.jsx';
 import { Spinner, toast } from '../../components/feedback.jsx';
 import { Avatar, Picture } from '../../components/media.jsx';
-import { AuthorPicker } from '../search/SearchPalette.jsx';
+import { AuthorSelector } from '../../components/AuthorSelector.jsx';
+import { FolderPicker } from '../folders/FolderPicker.jsx';
 import { TemplateInput } from './TemplateInput.jsx';
 import { TreePreview } from './TreePreview.jsx';
 import s from './ExportSheet.module.css';
@@ -155,31 +156,33 @@ function Section({ n, title, aside, children }) {
   );
 }
 
+/** The chosen authors as a compact summary; the full selector opens on demand. */
 function AuthorsField({ ids, options, onChange }) {
   const t = useT();
   const { data: platforms } = usePlatforms();
   const [open, setOpen] = useState(false);
   const btn = useRef(null);
   const chosen = ids.map((id) => options.find((a) => a.id === id)).filter(Boolean);
-  const toggle = (id) => onChange(ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id]);
+  const nPlatforms = new Set(chosen.map((a) => a.platformId)).size;
+  const SHOW = 4;
   return (
     <div className={s.authors}>
-      {chosen.map((a) => (
-        <span key={a.id} className={s.authorChip}>
-          <Avatar src={a.avatar} name={a.name} size={22} />
-          <span>{a.name}</span>
-          <button type="button" onClick={() => toggle(a.id)} aria-label={t('common.remove')}><Icon name="close" size={12} /></button>
-        </span>
-      ))}
-      <button ref={btn} type="button" className={s.addAuthor} onClick={() => setOpen((v) => !v)}>
-        <Icon name="plus" size={15} />{t('export.addAuthors')}
+      <button ref={btn} type="button" className={s.authorField} data-empty={!chosen.length} onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        {chosen.length ? (
+          <>
+            <span className={s.stackAv}>{chosen.slice(0, SHOW).map((a) => <Avatar key={a.id} src={a.avatar} name={a.name} size={24} />)}</span>
+            <span className={s.authorSummary}>
+              <span className={s.authorNames}>{chosen.slice(0, 2).map((a) => a.name).join(t('common.and'))}{chosen.length > 2 ? ` +${chosen.length - 2}` : ''}</span>
+              <span className={s.authorMeta}>{t('picker.authorsCount', { n: chosen.length })} · {t('picker.platformsCount', { n: nPlatforms })}</span>
+            </span>
+          </>
+        ) : (
+          <span className={s.authorSummary}><span className={s.authorNames}>{t('export.addAuthors')}</span></span>
+        )}
+        <Icon name="chevron-down" size={15} className={s.fieldChev} />
       </button>
       <Popover open={open} onClose={() => setOpen(false)} anchor={btn} placement="bottom-start" trapFocus={false} label={t('export.addAuthors')}>
-        <AuthorPicker authors={options} chosen={ids} onToggle={toggle} platforms={platforms} />
-        <div className={s.pickerFoot}>
-          <button type="button" onClick={() => onChange(options.map((a) => a.id))}>{t('common.selectAll')}</button>
-          <button type="button" onClick={() => onChange([])}>{t('common.clear')}</button>
-        </div>
+        <AuthorSelector authors={options} platforms={platforms ?? []} value={ids} onChange={onChange} autoFocus />
       </Popover>
     </div>
   );
@@ -187,12 +190,12 @@ function AuthorsField({ ids, options, onChange }) {
 
 function DirField({ value, onChange }) {
   const t = useT();
-  const [picking, setPicking] = useState(false);
-  const pick = async () => { setPicking(true); const p = await exportActions.pickDirectory(); setPicking(false); if (p) onChange(p); };
+  const [browsing, setBrowsing] = useState(false);
   return (
     <div className={s.dir}>
       <TextInput icon="folder" value={value} onChange={(e) => onChange(e.target.value)} spellCheck={false} className={s.dirInput} />
-      <Button icon={picking ? undefined : 'folder-open'} loading={picking} onClick={pick}>{t('export.chooseDir')}</Button>
+      <Button icon="folder-open" onClick={() => setBrowsing(true)}>{t('export.chooseDir')}</Button>
+      <FolderPicker open={browsing} onClose={() => setBrowsing(false)} onPick={onChange} initialPath={value} kind="export" />
     </div>
   );
 }
@@ -200,30 +203,32 @@ function DirField({ value, onChange }) {
 function DatesField({ cfg, set, marks }) {
   const t = useT();
   const fmt = useFormat();
+  const [cal, setCal] = useState(false);
+  const calBtn = useRef(null);
   const d = cfg.dates;
   const single = d.mode === 'range' && d.from === d.to ? d.from : null;
   const days = d.mode === 'range' ? Math.round((new Date(`${d.to}T00:00`) - new Date(`${d.from}T00:00`)) / 86400000) + 1 : 0;
+  const preset = PRESETS.find((p) => sameDates(d, presetRange(p)));
   return (
     <div className={s.dates}>
       <div className={s.presets}>
         {PRESETS.map((p) => (
-          <Chip key={p} selected={sameDates(d, presetRange(p))} onClick={() => set({ dates: presetRange(p), dayPosts: null })}>{t(`export.presets.${p}`)}</Chip>
+          <Chip key={p} selected={preset === p} onClick={() => set({ dates: presetRange(p), dayPosts: null })}>{t(`export.presets.${p}`)}</Chip>
         ))}
+        <Chip ref={calBtn} icon="calendar" selected={!preset} onClick={() => setCal((v) => !v)}>{t('export.custom')}</Chip>
       </div>
-      <div className={s.calRow}>
-        <div className={s.calBox}>
+      <div className={s.rangeLine}>
+        <Icon name="calendar" size={14} />
+        {d.mode === 'all' ? t('export.allDates')
+          : single ? fmt.date(single)
+            : <>{fmt.date(d.from)} – {fmt.date(d.to)}<span className={s.rangeSmall}>{t('export.days', { n: days })}</span></>}
+      </div>
+      <Popover open={cal} onClose={() => setCal(false)} anchor={calBtn} placement="bottom-start" trapFocus={false} label={t('export.dates')}>
+        <div className={s.calPop}>
           <Calendar mode="range" value={d.mode === 'range' ? { from: d.from, to: d.to } : null} marks={marks} maxDay={dayKey(new Date())}
             onChange={(r) => set({ dates: { mode: 'range', from: r.from, to: r.to }, dayPosts: null })} />
         </div>
-        <div className={s.rangeInfo}>
-          {d.mode === 'all'
-            ? <span className={s.rangeBig}>{t('export.allDates')}</span>
-            : <>
-                <span className={s.rangeBig}>{single ? fmt.date(single) : `${fmt.date(d.from)} – ${fmt.date(d.to)}`}</span>
-                {!single && <span className={s.rangeSmall}>{t('export.days', { n: days })}</span>}
-              </>}
-        </div>
-      </div>
+      </Popover>
       {single && <DayPosts day={single} cfg={cfg} set={set} />}
     </div>
   );

@@ -74,7 +74,8 @@ export const useTasks = () => useLive(api.tasks);
 export const taskActions = { clearHistory: api.tasks.clearHistory, cancel: api.tasks.cancel };
 
 export const useSettings = () => useLive(api.settings);
-export const settingsActions = { update: api.settings.update, pickDatabaseDirectory: api.settings.pickDatabaseDirectory };
+export const settingsActions = { update: api.settings.update };
+export const folderActions = { roots: api.folders.roots, list: api.folders.list, create: api.folders.create };
 
 // ------------------------------------------------------------------ sync
 export const useSyncScope = () => useQuery('sync-scope', api.sync.scope, ['library', 'connections', 'checklists']);
@@ -101,7 +102,6 @@ export const useLastExportConfig = (scope) => useQuery(`export-last:${scope}`, (
 export const exportActions = {
   start: api.exporter.start,
   saveConfig: api.exporter.saveConfig,
-  pickDirectory: api.exporter.pickDirectory,
   filterText: api.exporter.filterText,
   validate: api.exporter.validate,
 };

@@ -21,6 +21,8 @@ export default {
     addAuthor: 'New author', addPlatform: 'New custom platform',
     emptyTitle: 'Nothing here yet', emptyBody: 'Add an author, or connect a platform and choose who to save from the Sync page.',
     emptyPlatform: 'No authors on this platform yet',
+    allPlatforms: 'All', platformIndex: 'All platforms', findAuthor: 'Find an author', findPlatform: 'Find a platform', seeAll: 'See all {n}',
+    sort: { recent: 'Recently updated', name: 'By name', posts: 'Most posts' },
   },
   author: {
     statPosts: 'Posts', statFiles: 'Files', statSize: 'On disk', posts: 'Posts', postCount: { one: '{n} post', other: '{n} posts' }, files: '{n} files · {size}', checkedAt: 'Sync status checked {date}', unsynced: '{n} not synced',
@@ -57,7 +59,7 @@ export default {
   export: {
     title: 'Export', homeTitle: 'Export library', authorTitle: 'Export posts',
     authors: 'Authors', addAuthors: 'Add authors', outputDir: 'Export to', chooseDir: 'Choose folder', dates: 'Published',
-    presets: { today: 'Today', d7: 'Last 7 days', d30: 'Last 30 days', month: 'This month', year: 'This year', all: 'All time' },
+    custom: 'Custom', presets: { today: 'Today', d7: 'Last 7 days', d30: 'Last 30 days', month: 'This month', year: 'This year', all: 'All time' },
     pickRange: 'Pick a start and an end date', dayPosts: { one: '{n} post that day', other: '{n} posts that day' }, fileTypes: 'File types', fileName: 'File name',
     aggKeys: 'Grouping keys', dataKeys: 'Data keys', customKeys: '{platform} keys', customDisabled: 'Platform keys are unavailable when authors come from more than one platform',
     format: 'Format', preview: 'Folder preview', perDir: 'Per folder', moreFiles: { one: '{n} more file', other: '{n} more files' }, noFiles: 'No files match',
@@ -75,7 +77,7 @@ export default {
     filter: 'Filter titles', selected: '{n} selected', syncN: { one: 'Sync {n} post', other: 'Sync {n} posts' }, updateN: { one: 'Check {n} for updates', other: 'Check {n} for updates' },
     selectStatus: 'Select all {status}', submittedSync: { one: 'Sync started for {n} post', other: 'Sync started for {n} posts' }, submittedUpdate: { one: 'Update check started for {n} post', other: 'Update check started for {n} posts' }, nothing: 'None of the selected posts can be processed',
     pickHint: 'Choose authors, then check their sync status', emptyList: 'Check the sync status to list every post of these authors', dragHint: 'Press and drag to tick several at once',
-    noneInFilter: 'No posts under this filter', authorProgress: '{done} of {total} authors',
+    noneInFilter: 'No posts under this filter', authorProgress: '{done} of {total} authors', unsyncedN: '{n} new', expandAll: 'Expand all', collapseAll: 'Collapse all',
   },
   connections: {
     title: 'Connections', signIn: 'Sign in to {platform}', signInAgain: 'Sign in again', awaiting: 'We opened {platform} in your browser. Come back here once you’ve signed in.',
@@ -94,6 +96,13 @@ export default {
     errors: { expired: '{platform} sign-in expired', notConnected: '{platform} is not connected', nothingSaved: 'Nothing was saved' },
     scope: { one: '{name}', many: '{name} and {n} more' },
     positions: '#{n} in line',
+  },
+  picker: { search: 'Search authors, IDs or platforms', platforms: 'Platforms', all: 'All platforms', none: 'No matching authors', selected: { one: '{n} selected', other: '{n} selected' }, authors: 'Authors', allAuthors: 'All authors', allPlatforms: 'All platforms', platformsCount: { one: '{n} platform', other: '{n} platforms' }, authorsCount: { one: '{n} author', other: '{n} authors' } },
+  folders: {
+    title: { database: 'Choose a database folder', export: 'Choose an export folder' }, places: 'Places', thisPc: 'This PC', drive: 'Local disk ({name})',
+    place: { desktop: 'Desktop', documents: 'Documents', downloads: 'Downloads', pictures: 'Pictures' },
+    up: 'Up one level', newFolder: 'New folder', newFolderName: 'New folder', choose: 'Select folder', empty: 'This folder is empty',
+    library: 'PostPock database', notFound: 'That folder could not be found',
   },
   settings: {
     title: 'Settings', general: 'General', data: 'Data', language: 'Language', theme: 'Theme', light: 'Light', dark: 'Dark',
