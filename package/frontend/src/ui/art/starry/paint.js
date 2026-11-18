@@ -176,7 +176,8 @@ export function paintGround(P, weave) {
   c.globalAlpha = 1;
 }
 
-export function paintSky(P) {
+/** @param tick optional: called with the fraction done every few hundred strokes (the sky is most of the work). */
+export function paintSky(P, tick) {
   const items = [];
   const g = 8.6;
   for (let gy = -2; gy * g < SKY_BOTTOM + 20; gy++) for (let gx = -2; gx * g < W + 14; gx++) {
@@ -186,13 +187,14 @@ export function paintSky(P) {
     items.push({ k: R(), x, y, R });
   }
   shuffleSort(items);
-  for (const { x, y, R } of items) {
+  items.forEach(({ x, y, R }, i) => {
+    if (tick && (i & 511) === 0) tick(i / items.length);
     let L = lerp(15, 30, R());
     for (const s of STARS) { const d = Math.hypot(x - s.x, y - s.y); if (d < s.r * 2) L = Math.min(L, 8 + d * 0.45); }
     const w = lerp(5, 7.4, R());
     const [ca, cb] = skyColour(x, y, R);
     dash(P, stream(x, y, L, skyDir), w, ca, cb, R, { h: 135 + R() * 40 });
-  }
+  });
 }
 
 // ------------------------------------------------------------------ hills

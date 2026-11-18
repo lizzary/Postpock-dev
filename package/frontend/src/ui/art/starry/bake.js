@@ -10,18 +10,21 @@ import {
 } from './paint.js';
 
 
-export function bakeStarry(S, onLayer) {
+/** @param onProgress optional: receives 0…1 as the stages finish (for a progress indicator; not the picture itself). */
+export function bakeStarry(S, onLayer, onProgress) {
   const emit = (layer) => { onLayer(layer); };
+  const stage = (v) => onProgress?.(v);
 
   // ---- the static picture
   const P = new Painter(S, 0, 0, W, H);
   P.thin = THIN;
-  paintGround(P, weaveTiles(S));
-  paintSky(P);
-  paintHills(P);
-  paintVillage(P);
-  paintField(P);
+  paintGround(P, weaveTiles(S)); stage(0.04);
+  paintSky(P, (f) => stage(0.04 + 0.38 * f)); stage(0.42);
+  paintHills(P); stage(0.5);
+  paintVillage(P); stage(0.6);
+  paintField(P); stage(0.66);
   emit({ id: 'main', kind: 'main', x: 0, y: 0, w: W, h: H, canvas: litCanvas(P, { relief: 0.022 }) });
+  stage(0.74);
 
   // ---- discs that turn (whole-dash discs with ragged edges, so no disc edge is visible)
   const disc = (rad, paint) => {
@@ -45,12 +48,14 @@ export function bakeStarry(S, onLayer) {
     emit({ id: `flare${k}`, kind: 'flare', index: k, cx: st.x, cy: st.y, half: st.F, rate: -0.4 * st.dir, phase: k, canvas: disc(st.F, (D) => paintFlare(D, st)) });
   });
 
+  stage(0.9);
   // ---- village windows that light up, wave by wave
   [1, 2, 3].forEach((g) => {
     const wg = windowGroup(S, g);
     if (wg) emit({ id: `win${g}`, kind: 'window', group: g, x: wg.x0, y: wg.y0, w: wg.w, h: wg.h, canvas: litCanvas(wg.painter, { relief: 0.02 }) });
   });
 
+  stage(0.95);
   // ---- the cypress, painted upright once: the page bends it (idle sway, and a sway when the pointer brushes it)
   const Pc = new Painter(S, CYP_REG.x0, CYP_REG.y0, CYP_REG.w, CYP_REG.h);
   Pc.clear();

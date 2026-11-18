@@ -2,8 +2,13 @@
 //   • the spirals turn slowly; moving the pointer across the sky stirs them, scrolling spins them
 //   • stars breathe; a star or the moon answers a click with a flare
 //   • the cypress sways gently, and once more when the pointer brushes it; village windows light up in waves
-import { useEffect, useRef } from 'react';
-import { W, H, STARS, MOON, CYP } from './composition.js';
+// Arrival:
+//   • first time: a primed canvas (night tone, linen weave) holds the place, with a progress thread if it takes a
+//     while; once every layer is painted the whole picture opens out from the great spiral
+//   • coming back finds the finished layers still in memory and draws them before the first paint — no placeholder;
+//     after a long time away only a small preview is kept, shown at once and sharpened from the disk cache
+import { useLayoutEffect, useRef } from 'react';
+import { W, H, C0, STARS, MOON, CYP } from './composition.js';
 import s from './StarryNight.module.css';
 
 const ANCHOR_X = 0.72;                 // which part of the panel stays in view when the page is narrow
@@ -20,6 +25,25 @@ const onCypress = (x, y) => {
   return Math.abs(x - (CYP.bx + CYP.lean * t)) < hw * 1.05 + 4;
 };
 
+// ------------------------------------------------------------------ kept between visits (module scope = app session)
+const KEEP_MS = 5 * 60 * 1000;      // full layers stay this long after leaving the home page
+const PREVIEW_SCALE = 1 / 3;
+const kept = { layers: null, S: 0, t0: 0, extra: null, preview: null, timer: 0 };
+const closeLayers = (L) => {
+  for (const list of [L.spin, L.star, L.flare, L.window]) for (const l of list) l?.bitmap?.close?.();
+  for (const l of [L.main, L.halo, L.moon, L.cypress]) l?.bitmap?.close?.();
+};
+/** A small still of the whole picture (moving parts at rest), for the next arrival after the layers are released. */
+function makePreview(L) {
+  const cv = new OffscreenCanvas(Math.round(W * PREVIEW_SCALE), Math.round(H * PREVIEW_SCALE));
+  const c = cv.getContext('2d');
+  c.scale(PREVIEW_SCALE, PREVIEW_SCALE);
+  c.drawImage(L.main.bitmap, 0, 0, W, H);
+  for (const l of [...L.spin, ...L.star, L.halo, L.moon].filter(Boolean)) c.drawImage(l.bitmap, l.cx - l.half, l.cy - l.half, 2 * l.half, 2 * l.half);
+  for (const l of [...L.window, L.cypress].filter(Boolean)) c.drawImage(l.bitmap, l.x, l.y, l.w, l.h);
+  return cv.transferToImageBitmap();
+}
+
 export function StarryNight({ className, onReady }) {
   const wrap = useRef(null);
   const baseCv = useRef(null);
@@ -27,17 +51,24 @@ export function StarryNight({ className, onReady }) {
   const readyRef = useRef(onReady);
   readyRef.current = onReady;
 
-  useEffect(() => {
+  // a layout effect: when the layers are still in memory they are drawn before the browser paints the page
+  useLayoutEffect(() => {
     const el = wrap.current, base = baseCv.current, top = topCv.current;
     const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-    const layers = { spin: [], star: [], flare: [], halo: null, moon: null, window: [], cypress: null, main: null };
-    const born = new Map();          // layer → arrival time (fade-in)
-    const extra = new Map();         // spin layer id → { angle, vel }
+    clearTimeout(kept.timer);
+    const warm = kept.layers;                   // finished layers from the previous visit
+    const preview = warm ? null : kept.preview; // or just a small still of them
+    kept.layers = null;
+    const layers = warm ?? { spin: [], star: [], flare: [], halo: null, moon: null, window: [], cypress: null, main: null };
+    const born = new Map();          // window layer → when it starts to light up; missing = lit
+    const extra = warm ? kept.extra : new Map();   // spin layer id → { angle, vel }
+    let baseFade = null;             // { from: ImageBitmap, t: start } while the finished picture fades over a stand-in
+    let holdPreview = !!preview;     // keep showing the preview until every layer has arrived
     const flares = new Map();        // star index → start time
     let moonPulse = -10;
     let kick = { t: -1e9, dir: 1 }, overTree = false;   // the cypress's hover sway
     let view = { w: 1, h: 1, dpr: 1, k: 1, ox: 0, oy: 0 };
-    let t0 = performance.now(), last = t0, lastInput = -1e9, visible = true, raf = 0, firstFrame = 0;
+    let t0 = warm ? kept.t0 : performance.now(), last = performance.now(), lastInput = -1e9, visible = true, raf = 0, firstFrame = warm ? -1e9 : 0;
 
     // ---------------------------------------------------------- geometry
     const measure = () => {
@@ -50,7 +81,7 @@ export function StarryNight({ className, onReady }) {
         cv.height = Math.max(1, Math.round(r.height * dpr));
       }
       drawBase();
-      if (reduce) frame(performance.now());
+      if (layers.main) frame(performance.now());   // resizing clears the canvases: never leave a frame without the moving parts
     };
     const toUnits = (cx, cy) => {
       const r = el.getBoundingClientRect();
@@ -59,16 +90,24 @@ export function StarryNight({ className, onReady }) {
 
     // ---------------------------------------------------------- drawing
     const setT = (ctx) => ctx.setTransform(view.dpr * view.k, 0, 0, view.dpr * view.k, view.dpr * view.ox, view.dpr * view.oy);
-    function drawBase() {
+    const FADE_MS = 900;
+    /** The static picture, or the small preview until everything has arrived; cross-fading from one to the other. */
+    function drawBase(now = performance.now()) {
       const ctx = base.getContext('2d');
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, base.width, base.height);
-      if (!layers.main) return;
       setT(ctx);
       ctx.imageSmoothingQuality = 'high';
+      const under = baseFade?.from ?? (layers.main && !holdPreview ? null : preview);
+      if (under) ctx.drawImage(under, 0, 0, W, H);
+      if (!layers.main || holdPreview) return;
+      const a = baseFade ? smooth((now - baseFade.t) / FADE_MS) : 1;
+      ctx.globalAlpha = a;
       ctx.drawImage(layers.main.bitmap, 0, 0, W, H);
+      ctx.globalAlpha = 1;
+      if (baseFade && a >= 1) { if (baseFade.from !== preview) baseFade.from.close?.(); baseFade = null; }
     }
-    const fadeOf = (layer, now, delay = 0, dur = 900) => smooth((now - (born.get(layer) ?? now) - delay) / dur);
+    const fadeOf = (layer, now, delay = 0, dur = 900) => (born.has(layer) ? smooth((now - born.get(layer) - delay) / dur) : 1);
     const disc = (ctx, l, angle, scale = 1, alpha = 1) => {
       if (alpha <= 0.002) return;
       ctx.save();
@@ -84,6 +123,7 @@ export function StarryNight({ className, onReady }) {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       const t = reduce ? 0 : (now - t0) / 1000;
+      if (baseFade) drawBase(now);
       const ctx = top.getContext('2d');
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.clearRect(0, 0, top.width, top.height);
@@ -169,30 +209,59 @@ export function StarryNight({ className, onReady }) {
     const stop = () => { cancelAnimationFrame(raf); raf = 0; };
 
     // ---------------------------------------------------------- layers from the worker
-    const worker = new Worker(new URL('./starry.worker.js', import.meta.url), { type: 'module' });
     const r0 = el.getBoundingClientRect();
     const S = clamp(Math.round(Math.max(r0.width / W, r0.height / H) * Math.min(2, window.devicePixelRatio || 1) * 2) / 2, 1, 2);
-    worker.onmessage = ({ data }) => {
+    // back from another page at the same (or a smaller) size: nothing to load
+    const worker = warm && kept.S >= S ? null : new Worker(new URL('./starry.worker.js', import.meta.url), { type: 'module' });
+    let layersS = warm ? kept.S : S;   // scale of the layers in memory
+    const shown = !!(warm || preview);
+    el.dataset.mode = warm ? 'warm' : preview ? 'preview' : 'cold';
+    if (shown) { el.dataset.ready = 'true'; readyRef.current?.(); }
+
+    /** First arrival: open the finished picture out from the great spiral; the windows light up after. */
+    let revealTimer = 0;
+    const reveal = () => {
+      el.style.setProperty('--rx', `${((C0.x * view.k + view.ox) / view.w) * 100}%`);
+      el.style.setProperty('--ry', `${((C0.y * view.k + view.oy) / view.h) * 100}%`);
+      const now = performance.now();
+      for (const l of layers.window) born.set(l, now + 600);
+      firstFrame = now;
+      el.dataset.ready = 'true';
+      readyRef.current?.();
+      // the mask is only for the opening: drop it afterwards so the animation composites plainly
+      revealTimer = setTimeout(() => { el.dataset.revealed = 'true'; }, reduce ? 0 : 2600);
+    };
+
+    const swap = (list, l) => { const i = list.findIndex((x) => x.id === l.id); if (i >= 0) { list[i].bitmap.close?.(); list[i] = l; } else list.push(l); };
+    if (worker) worker.onmessage = ({ data }) => {
+      if (data.type === 'progress') { el.style.setProperty('--progress', data.value); return; }
+      if (data.type === 'done') {
+        if (holdPreview) {
+          // over the preview the moving parts appeared in place (they line up with it); now the full picture fades in
+          holdPreview = false; baseFade = { from: preview, t: performance.now() }; drawBase();
+        } else if (!shown) reveal();
+        return;
+      }
       if (data.type !== 'layer') return;
       const l = data.layer;
-      born.set(l, performance.now());
+      const upgrade = !!warm;          // sharper copies of layers already on screen: swap in place
       if (l.kind === 'main') {
+        if (upgrade) { layers.main.bitmap.close?.(); layersS = S; }
         layers.main = l;
-        firstFrame = performance.now();
         drawBase();
-        el.dataset.ready = 'true';
-        readyRef.current?.();
         start();
-      } else if (l.kind === 'spin') { layers.spin.push(l); extra.set(l.id, { angle: 0, vel: 0 }); }
-      else if (l.kind === 'star') layers.star.push(l);
-      else if (l.kind === 'flare') layers.flare.push(l);
-      else if (l.kind === 'halo') layers.halo = l;
-      else if (l.kind === 'moon') layers.moon = l;
-      else if (l.kind === 'window') layers.window.push(l);
-      else if (l.kind === 'cypress') layers.cypress = l;
+      } else if (l.kind === 'spin') { swap(layers.spin, l); if (!extra.has(l.id)) extra.set(l.id, { angle: 0, vel: 0 }); }
+      else if (l.kind === 'star') swap(layers.star, l);
+      else if (l.kind === 'flare') swap(layers.flare, l);
+      else if (l.kind === 'window') { swap(layers.window, l); if (!shown) born.set(l, Infinity); }   // lit after the reveal
+      else {
+        const old = layers[l.kind];
+        if (old && old !== l) old.bitmap.close?.();
+        layers[l.kind] = l;
+      }
       if (reduce) frame(performance.now());
     };
-    worker.postMessage({ S });
+    worker?.postMessage({ S });
 
     // ---------------------------------------------------------- interaction
     let prev = null;
@@ -256,9 +325,12 @@ export function StarryNight({ className, onReady }) {
     if (!reduce) window.addEventListener('scroll', onScroll, { passive: true });
     measure();
 
+    if (warm) start();
+
     return () => {
       stop();
-      worker.terminate();
+      clearTimeout(revealTimer);
+      worker?.terminate();
       io.disconnect();
       ro.disconnect();
       document.removeEventListener('visibilitychange', onVis);
@@ -266,14 +338,19 @@ export function StarryNight({ className, onReady }) {
       el.removeEventListener('pointerleave', onLeave);
       el.removeEventListener('click', onClick);
       window.removeEventListener('scroll', onScroll);
-      for (const list of [layers.spin, layers.star, layers.flare, layers.window]) for (const l of list) l?.bitmap?.close?.();
-      for (const l of [layers.main, layers.halo, layers.moon, layers.cypress]) l?.bitmap?.close?.();
+      if (baseFade && baseFade.from !== preview) baseFade.from.close?.();
+      if (!layers.main) { closeLayers(layers); return; }      // left before the picture was finished
+      // keep the finished picture for the next visit; after a while keep only a small still of it
+      kept.preview?.close?.();
+      kept.preview = makePreview(layers);
+      Object.assign(kept, { layers, S: layersS, t0, extra });
+      kept.timer = setTimeout(() => { if (kept.layers) { closeLayers(kept.layers); kept.layers = null; } }, KEEP_MS);
     };
   }, []);
 
   return (
     <div ref={wrap} className={`${s.wrap} ${className ?? ''}`}>
-      <div className={s.underpainting} aria-hidden="true" />
+      <div className={s.primer} aria-hidden="true"><span className={s.thread} /></div>
       <canvas ref={baseCv} className={s.canvas} aria-hidden="true" />
       <canvas ref={topCv} className={s.canvas} aria-hidden="true" />
     </div>

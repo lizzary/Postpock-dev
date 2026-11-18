@@ -1,5 +1,5 @@
-// Paints the home-page Starry Night off the main thread and streams each layer to the page as soon as it is ready.
-// A finished bake is cached (WebP) so the next visit only decodes it.
+// Paints the home-page Starry Night off the main thread and streams each layer to the page as soon as it is ready,
+// with stage progress for the loading indicator. A finished bake is cached (WebP) so the next visit only decodes it.
 import { bakeStarry } from './bake.js';
 import { VERSION } from './composition.js';
 import { loadBake, saveBake } from './cache.js';
@@ -22,7 +22,7 @@ self.onmessage = async ({ data: { S } }) => {
     copy.getContext('2d').drawImage(canvas, 0, 0);
     keep.push({ meta, canvas: copy });
     send(meta, canvas.transferToImageBitmap());
-  });
+  }, (value) => self.postMessage({ type: 'progress', value }));
   self.postMessage({ type: 'done', cached: false, ms: Math.round(performance.now() - t0) });
 
   try {

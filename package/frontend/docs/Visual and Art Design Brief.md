@@ -162,6 +162,14 @@ Location: `src/ui/art/starry/`. It is a faithful port of the impasto technique f
 - **Layers** (`bake.js`): one static picture plus spinning discs (spirals, star halos, moon halo), flares, three
   waves of village windows, and one upright cypress. Painted in a Web Worker, streamed to the page as each layer
   finishes, cached in IndexedDB as WebP.
+- **Arrival:** the first time, a *primed canvas* holds the place: the bare night-toned ground with the linen weave,
+  never a sketch of the picture. It sits exactly where the painting will be, so the cream greeting and glass cards
+  look the same before and after. If the wait is noticeable, a single star-yellow thread shows real progress from
+  the worker. When every layer is painted, the whole picture opens out from the great spiral (a soft radial mask,
+  animated through the registered `--reveal` property) while settling from a slight zoom; the mask is dropped
+  afterwards and the windows light up in their waves. Returning finds the finished layers still in memory (5 minutes)
+  and draws them before the first paint; after that a small composite preview is shown at once and sharpened from
+  the disk cache.
 - **Life:** slow idle rotation; pointer movement stirs nearby spirals; scrolling spins them; clicking a star or the
   moon makes it flare; the cypress bends gently, and sways once more when the pointer brushes it; windows light up
   in three waves. All motion stops off-screen and under reduced motion.
