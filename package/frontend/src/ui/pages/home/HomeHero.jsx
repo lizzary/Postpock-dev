@@ -1,0 +1,127 @@
+import { ViewTransition, useEffect, useRef, useState } from 'react';
+import { libraryActions, useSettings } from '../../../bridge/index.js';
+import { Link, navigate, paths } from '../../../app/router.jsx';
+import { useT } from '../../../i18n/index.jsx';
+import { useFormat } from '../../lib/format.js';
+import { StarryNight } from '../../art/starry/StarryNight.jsx';
+import { Icon } from '../../icons/Icon.jsx';
+import { Avatar, Picture } from '../../components/media.jsx';
+import s from './HomeHero.module.css';
+
+function greetingKey(h) {
+  if (h >= 5 && h < 11) return 'morning';
+  if (h >= 11 && h < 13) return 'noon';
+  if (h >= 13 && h < 18) return 'afternoon';
+  if (h >= 18 && h < 23) return 'evening';
+  return 'night';
+}
+
+/** Reveal accent text only once its face has loaded, so it never swaps in front of the reader. */
+function useFontReady(family, sample) {
+  const [ready, setReady] = useState(() => document.fonts?.check?.(`48px "${family}"`, sample) ?? true);
+  useEffect(() => {
+    if (ready) return undefined;
+    let alive = true;
+    const done = () => { if (alive) setReady(true); };
+    document.fonts.load(`48px "${family}"`, sample).then(done, done);
+    const t = setTimeout(done, 2500);
+    return () => { alive = false; clearTimeout(t); };
+  }, [family, sample, ready]);
+  return ready;
+}
+
+export function HomeHero({ home, heroRef }) {
+  const t = useT();
+  const fmt = useFormat();
+  const greeting = t(`home.greeting.${greetingKey(new Date().getHours())}`);
+  const fontReady = useFontReady('PP WenKai', greeting);
+  const { stats, lastViewed } = home;
+  const { dbPath } = useSettings();
+
+  return (
+    <section ref={heroRef} className={s.hero}>
+      <div className={s.art}><StarryNight /></div>
+      <div className={s.veil} aria-hidden="true" />
+      <div className={s.content}>
+        <div className={`${s.greeting} ${fontReady ? s.in : ''}`}>
+          <h1 className={`${s.hello} kai`}>{greeting}</h1>
+          <p className={s.prompt}>{t('home.prompt')}</p>
+        </div>
+        <div className={s.row}>
+          {lastViewed && <LastViewed item={lastViewed} />}
+          {stats.posts > 0 && <RandomDeck key={dbPath} excludeId={lastViewed?.post.id} />}
+        </div>
+        {stats.posts > 0 && (
+          <p className={s.stats}>
+            <span>{t('home.stats', { authors: fmt.number(stats.authors), posts: fmt.number(stats.posts), size: fmt.bytes(stats.bytes) })}</span>
+            {stats.thisWeek > 0 && <span className={s.week}><Icon name="sparkle" size={14} />{t('home.thisWeek', { n: stats.thisWeek })}</span>}
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function LastViewed({ item }) {
+  const t = useT();
+  const fmt = useFormat();
+  const { post, author } = item;
+  return (
+    <Link to={paths.post(post.id)} className={s.last}>
+      <ViewTransition name={`post-art-${post.id}`} share="morph">
+        <Picture src={post.cover?.url} className={s.lastCover} eager />
+      </ViewTransition>
+      <span className={s.lastBody}>
+        <span className={s.kicker}><Icon name="history" size={14} />{t('home.lastViewed')} · {fmt.relative(item.viewedAt)}</span>
+        <span className={s.lastTitle}>{post.title}</span>
+        <span className={s.lastAuthor}><Avatar src={author.avatar} name={author.name} size={18} />{author.name}</span>
+      </span>
+      <span className={s.lastGo}><Icon name="arrow-right" size={18} /></span>
+    </Link>
+  );
+}
+
+/** A small deck of covers. Drawing riffles through it, then opens whatever comes up. */
+function RandomDeck({ excludeId }) {
+  const t = useT();
+  const [covers, setCovers] = useState([]);
+  const [face, setFace] = useState(0);
+  const [drawing, setDrawing] = useState(false);
+  const timers = useRef([]);
+  useEffect(() => {
+    let alive = true;
+    const pending = timers.current;
+    libraryActions.sampleCovers(8).then((c) => { if (alive) setCovers(c); });
+    return () => { alive = false; pending.forEach(clearTimeout); };
+  }, []);
+
+  const draw = async () => {
+    if (drawing || !covers.length) return;
+    setDrawing(true);
+    const pick = libraryActions.randomPost(excludeId);
+    // riffle: quick at first, slowing down
+    let at = 0;
+    for (let i = 0; i < 9; i++) { at += 55 + i * i * 7; timers.current.push(setTimeout(() => setFace((f) => (f + 1) % covers.length), at)); }
+    const [post] = await Promise.all([pick, new Promise((r) => setTimeout(r, at + 60))]);
+    if (!post) { setDrawing(false); return; }
+    setCovers((c) => { const next = [...c]; next[(face + 9) % c.length] = post.cover?.url; return next; });
+    timers.current.push(setTimeout(() => navigate(paths.post(post.id)), 260));
+  };
+
+  const at = (k) => covers[(face + k) % Math.max(1, covers.length)];
+  return (
+    <button type="button" className={`${s.deck} ${drawing ? s.drawing : ''}`} onClick={draw} aria-busy={drawing}>
+      <span className={s.cards} aria-hidden="true">
+        {[2, 1, 0].map((k) => (
+          <span key={k} className={s.card} data-k={k}>
+            {at(k) && <img src={at(k)} alt="" draggable={false} />}
+          </span>
+        ))}
+      </span>
+      <span className={s.deckLabel}>
+        <Icon name="dice" size={17} />
+        {drawing ? t('home.drawing') : t('home.random')}
+      </span>
+    </button>
+  );
+}

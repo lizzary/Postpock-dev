@@ -1,0 +1,44 @@
+.group { padding: 10px 0 18px; }
+.group + .group { border-top: 1px solid var(--line); padding-top: 22px; }
+.groupTitle { margin-bottom: 8px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; color: var(--ink-3); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 10px 0; }
+.stack { display: flex; flex-direction: column; gap: 10px; padding: 10px 0; }
+.label { display: inline-flex; align-items: center; gap: 10px; font-size: 14.5px; color: var(--ink); }
+.label svg { color: var(--ink-3); }
+
+.pathRow { display: flex; gap: 8px; }
+.path {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border-radius: var(--r-2);
+  background: var(--field);
+  box-shadow: 0 0 0 1px var(--line) inset;
+  color: var(--ink);
+  text-align: left;
+  transition: background-color var(--dur-1), box-shadow var(--dur-1);
+}
+.path:hover:not(:disabled) { background: var(--field-hover); box-shadow: 0 0 0 1px var(--line-2) inset; }
+.path svg { color: var(--star); flex-shrink: 0; }
+.pathText { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-sans); font-variant-numeric: tabular-nums; letter-spacing: 0.01em; }
+.pathAction { flex-shrink: 0; font-size: 13px; font-weight: 600; color: var(--accent); }
+.reset { align-self: flex-start; margin-left: -8px; }
+
+.lanesWrap { display: flex; align-items: center; gap: 6px; }
+.lanes { display: flex; align-items: flex-end; gap: 4px; height: 30px; padding: 0 4px; border-radius: var(--r-1); }
+.lane {
+  width: 10px;
+  height: calc(12px + var(--i) * 2.4px);
+  border-radius: 2px;
+  background: var(--line-2);
+  transition: background-color 260ms var(--ease-out), transform 260ms var(--ease-back);
+  transition-delay: calc(var(--i) * 18ms);
+}
+.lane:hover { transform: scaleY(1.12); }
+.lane[data-on='true'] { background: var(--star); }
+.lanesValue { min-width: 64px; margin-left: 6px; font-size: 13px; color: var(--ink-2); }
+
+.about { margin-top: 8px; padding-top: 16px; border-top: 1px solid var(--line); font-size: 12.5px; color: var(--ink-3); text-align: center; }
