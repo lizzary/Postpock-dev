@@ -10,6 +10,9 @@ const load = {
   newAuthor: () => import('./editors/AuthorDialog.jsx'),
   newPlatform: () => import('./editors/PlatformDialog.jsx'),
   addPost: () => import('./editors/PostComposer.jsx'),
+  backup: () => import('./backup/BackupSheet.jsx'),
+  mcp: () => import('./mcp/McpSheet.jsx'),
+  welcome: () => import('./welcome/WelcomeDialog.jsx'),
 };
 const PANELS = Object.fromEntries(Object.entries(load).map(([k, fn]) => [k, lazy(() => fn().then((m) => ({ default: m.default })))]));
 

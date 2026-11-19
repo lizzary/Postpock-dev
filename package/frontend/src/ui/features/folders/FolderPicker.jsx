@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { folderActions } from '../../../bridge/index.js';
 import { useT } from '../../../i18n/index.jsx';
+import { useFormat } from '../../lib/format.js';
 import { Icon } from '../../icons/Icon.jsx';
 import { Button, IconButton } from '../../components/controls.jsx';
 import { Dialog } from '../../components/overlay.jsx';
@@ -15,12 +16,15 @@ const crumbsOf = (path) => {
 
 /**
  * Browse folders and pick one. onPick(path) runs only after the user confirms.
- * kind: 'database' | 'export' (title and the hint about existing libraries)
+ * kind: 'database' | 'export' (title and the hint about existing libraries) | 'archive' (picks a file)
+ * accept: file extensions; when given, those files are listed and one of them is what gets picked.
  */
-export function FolderPicker({ open, onClose, onPick, initialPath, kind = 'export' }) {
+export function FolderPicker({ open, onClose, onPick, initialPath, kind = 'export', accept }) {
   const t = useT();
+  const fmt = useFormat();
+  const files = !!accept;
   const [roots, setRoots] = useState(null);
-  const [dir, setDir] = useState(null);           // { path, parent, entries }
+  const [dir, setDir] = useState(null);           // { path, parent, entries, files }
   const [selected, setSelected] = useState(null);
   const [editing, setEditing] = useState(false);
   const [typed, setTyped] = useState('');
@@ -29,10 +33,10 @@ export function FolderPicker({ open, onClose, onPick, initialPath, kind = 'expor
   const list = useRef(null);
 
   const go = async (path, select = null) => {
-    const res = await folderActions.list(path);
+    const res = await folderActions.list(path, files ? { accept } : undefined);
     if (!res.ok) { setMissing(true); return false; }
     setMissing(false); setEditing(false);
-    setDir(res); setSelected(select ?? res.path);
+    setDir(res); setSelected(select ?? (files ? res.files[0]?.path ?? null : res.path));
     list.current?.scrollTo(0, 0);
     return true;
   };
@@ -40,9 +44,10 @@ export function FolderPicker({ open, onClose, onPick, initialPath, kind = 'expor
   useEffect(() => {
     if (!open) return;
     folderActions.roots().then(setRoots);
-    // open where the current choice lives, with it selected
+    // open where the current choice lives, with it selected (a file picker opens inside its folder)
     (async () => {
-      if (initialPath) {
+      if (initialPath && files && await go(initialPath)) return;
+      if (initialPath && !files) {
         const parent = initialPath.replace(/\\[^\\]+\\?$/, '') || initialPath;
         if (await go(parent.length === 2 ? `${parent}\\` : parent, initialPath)) return;
       }
@@ -59,16 +64,19 @@ export function FolderPicker({ open, onClose, onPick, initialPath, kind = 'expor
   };
 
   const sel = dir?.entries.find((e) => e.path === selected);
+  const selFile = dir?.files?.find((f) => f.path === selected);
+  const ready = files ? !!selFile : !!selected;
+  const pick = (path) => { onPick(path); onClose(); };
   return (
     <Dialog open={open} onClose={onClose} size="lg" className={s.dialog} title={t(`folders.title.${kind}`)}
       footer={<>
         <div className={s.choice}>
-          <Icon name={sel?.library ? 'database' : 'folder'} size={16} />
-          <span className={s.choicePath} title={selected ?? ''}>{selected ?? ''}</span>
+          <Icon name={files ? 'frame' : sel?.library ? 'database' : 'folder'} size={16} />
+          <span className={s.choicePath} title={selected ?? ''}>{files ? selFile?.path ?? '' : selected ?? ''}</span>
           {kind === 'database' && sel?.library && <span className={s.tag}>{t('folders.library')}</span>}
         </div>
         <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
-        <Button variant="primary" icon="check" disabled={!selected} onClick={() => { onPick(selected); onClose(); }}>{t('folders.choose')}</Button>
+        <Button variant="primary" icon="check" disabled={!ready} onClick={() => pick(selected)}>{files ? t('folders.chooseFile') : t('folders.choose')}</Button>
       </>}>
       <div className={s.body}>
         <nav className={s.side}>
@@ -129,7 +137,15 @@ export function FolderPicker({ open, onClose, onPick, initialPath, kind = 'expor
                 </button>
               </li>
             ))}
-            {dir && !dir.entries.length && naming == null && <li className={s.state}>{t('folders.empty')}</li>}
+            {dir?.files?.map((f) => (
+              <li key={f.path} role="option" aria-selected={selected === f.path} className={`${s.row} ${s.fileRow}`} data-on={selected === f.path}
+                onClick={() => setSelected(f.path)} onDoubleClick={() => pick(f.path)}>
+                <Icon name="frame" size={18} className={s.fileIcon} />
+                <span className={s.name}>{f.name}</span>
+                <span className={`${s.fileMeta} num`}>{fmt.dateSmart(f.modifiedAt)} · {fmt.bytes(f.size)}</span>
+              </li>
+            ))}
+            {dir && !dir.entries.length && !dir.files?.length && naming == null && <li className={s.state}>{t('folders.empty')}</li>}
           </ul>
         </div>
       </div>

@@ -1,7 +1,7 @@
 // The bridge: React hooks and actions over the data layer. UI components import from here and nowhere else.
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import * as api from '../data/api/index.js';
-import { useQuery, useSuspenseQuery, useDebounced } from './query.js';
+import { useQuery, useSuspenseQuery, useDebounced, preloadSuspense } from './query.js';
 
 export { useDebounced };
 export const FILE_KINDS = api.FILE_KINDS;
@@ -9,6 +9,8 @@ export const FILE_KINDS = api.FILE_KINDS;
 // ------------------------------------------------------------------ library
 // Page data suspends (see useSuspenseQuery); smaller pieces load in place.
 export const useHome = () => useSuspenseQuery('home', api.library.home, ['library', 'connections']);
+/** Start loading the home page before it is shown (after signing in), so it opens without a placeholder. */
+export const preloadHome = () => preloadSuspense('home', api.library.home, ['library', 'connections']);
 export const useAuthor = (id) => useSuspenseQuery(`author:${id}`, () => api.library.author(id), ['library', 'connections', 'checklists']);
 export const usePost = (id) => useSuspenseQuery(`post:${id}`, () => api.library.post(id), ['library']);
 export function usePosts(authorId, { page, pageSize, sort }) {
@@ -79,6 +81,38 @@ export const taskActions = { clearHistory: api.tasks.clearHistory, cancel: api.t
 export const useSettings = () => useLive(api.settings);
 export const settingsActions = { update: api.settings.update };
 export const folderActions = { roots: api.folders.roots, list: api.folders.list, create: api.folders.create };
+
+// ------------------------------------------------------------------ access: sign-in, server mode, MCP, first run
+export const useAccess = () => useLive(api.access);
+export const accessActions = {
+  login: api.access.login,
+  lock: api.access.lock,
+  setPassword: api.access.setPassword,
+  disablePassword: api.access.disablePassword,
+  setServer: api.access.setServer,
+  setMcp: api.access.setMcp,
+  completeSetup: api.access.completeSetup,
+};
+
+// ------------------------------------------------------------------ MCP keys
+export const MCP_PERMISSIONS = api.mcp.PERMISSIONS;
+export const useMcpKeys = () => useQuery('mcp-keys', api.mcp.keys, ['mcp']);
+export const useAuthorDirectory = () => useQuery('author-directory', api.mcp.directory, ['library']);
+export const mcpActions = { create: api.mcp.create, update: api.mcp.update, remove: api.mcp.remove, regenerate: api.mcp.regenerate };
+export const mcpClientConfig = api.mcp.clientConfig;
+
+// ------------------------------------------------------------------ snapshots (data security)
+export const useBackup = () => useQuery('backup', api.backup.overview, ['snapshots', 'library']);
+export const useBackupChanges = (id) => useQuery(id ? `backup-changes:${id}` : null, () => api.backup.changes(id), ['snapshots', 'library']);
+export const backupActions = {
+  create: api.backup.create,
+  load: api.backup.load,
+  remove: api.backup.remove,
+  restore: api.backup.restore,
+  exportTo: api.backup.exportTo,
+  inspect: api.backup.inspect,
+  importFrom: api.backup.importFrom,
+};
 
 // ------------------------------------------------------------------ sync
 export const useSyncScope = () => useQuery('sync-scope', api.sync.scope, ['library', 'connections', 'checklists']);

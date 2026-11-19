@@ -112,7 +112,23 @@ const I = {
   key: '<circle cx="8" cy="15.5" r="3.6"/><path d="m10.6 13 8.4-8.4"/><path d="m16.5 7.1 2.4 2.4"/><path d="m14.2 9.4 1.8 1.8"/>',
   undo: '<path d="M9 14.5 4.5 10 9 5.5"/><path d="M4.5 10h10a5 5 0 0 1 0 10H11"/>',
   lock: '<rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5"/>',
+  unlock: '<rect x="5" y="10.5" width="14" height="9.5" rx="2"/><path d="M8 10.5V8a4 4 0 0 1 7.7-1.6"/>',
   pocket: '<path d="M5 6.5h14v6.8a7 7 0 0 1-14 0Z"/><path d="M5 6.5 12 11l7-4.5"/>',
+  'eye-off': '<path d="M10.2 5.9a8.6 8.6 0 0 1 1.8-.2c5.7 0 9 6.3 9 6.3a15.4 15.4 0 0 1-2.3 3.1"/><path d="M15.3 15.4a8.7 8.7 0 0 1-3.3 2.9c-5.7 0-9-6.3-9-6.3a15.5 15.5 0 0 1 3.4-4"/><path d="M10.1 10.2a2.7 2.7 0 0 0 3.8 3.8"/><path d="m4.5 4.5 15 15"/>',
+  /* data security: a shield that keeps things safe */
+  shield: '<path d="M12 3.7 5.4 6.3v5.2c0 4.1 2.8 7.3 6.6 8.7 3.8-1.4 6.6-4.6 6.6-8.7V6.3Z"/><path d="m9.3 12.1 1.9 1.9 3.6-3.8"/>',
+  /* a snapshot is a picture hung on the wall: nail, wire, frame */
+  frame: '<circle cx="12" cy="3.3" r=".95" fill="currentColor"/><path d="m9.4 6.2 2.6-2.4 2.6 2.4"/><rect x="3.5" y="6.2" width="17" height="13.8" rx="1.6"/><path d="m7 16.8 3.2-3.4 2.3 2.4 1.5-1.6 3 2.6"/><circle cx="15.6" cy="10.2" r="1" fill="currentColor"/>',
+  import: '<path d="M10 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V14"/><path d="M11.5 7v5.5H17"/><path d="m19.5 4.5-8 8"/>',
+  changes: '<path d="M13.5 3.5H7.2a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9.6a2 2 0 0 0 2-2V8.8Z"/><path d="M13.5 3.5v5.3h5.3"/><path d="M12 10.9v4.4"/><path d="M9.8 13.1h4.4"/><path d="M9.8 17.4h4.4"/>',
+  /* server mode: the library speaking to the network */
+  broadcast: '<circle cx="12" cy="12" r="1.7"/><path d="M8.7 8.7a4.7 4.7 0 0 0 0 6.6"/><path d="M15.3 8.7a4.7 4.7 0 0 1 0 6.6"/><path d="M6.1 6.1a8.4 8.4 0 0 0 0 11.8"/><path d="M17.9 6.1a8.4 8.4 0 0 1 0 11.8"/>',
+  wifi: '<path d="M4.6 9.6a10.5 10.5 0 0 1 14.8 0"/><path d="M7.5 12.6a6.4 6.4 0 0 1 9 0"/><path d="M10.3 15.6a2.4 2.4 0 0 1 3.4 0"/><circle cx="12" cy="18.6" r="1" fill="currentColor"/>',
+  network: '<rect x="9.2" y="3.8" width="5.6" height="4.6" rx="1.1"/><rect x="3.6" y="15.6" width="5.6" height="4.6" rx="1.1"/><rect x="14.8" y="15.6" width="5.6" height="4.6" rx="1.1"/><path d="M12 8.4V12"/><path d="M6.4 15.6V14a2 2 0 0 1 2-2h7.2a2 2 0 0 1 2 2v1.6"/>',
+  phone: '<rect x="7" y="3.5" width="10" height="17" rx="2.3"/><path d="M10.6 17.4h2.8"/>',
+  qr: '<rect x="4" y="4" width="6.2" height="6.2" rx="1.2"/><rect x="13.8" y="4" width="6.2" height="6.2" rx="1.2"/><rect x="4" y="13.8" width="6.2" height="6.2" rx="1.2"/><path d="M13.8 13.8h2.4M20 13.8v2.4M13.8 17.2V20h2.4M18.6 18.6H20V20"/>',
+  /* MCP: one library, several assistants linked to it */
+  mcp: '<circle cx="12" cy="12.6" r="2.6"/><circle cx="5.6" cy="6.2" r="1.9"/><circle cx="18.4" cy="6.2" r="1.9"/><circle cx="12" cy="20" r="1.5"/><path d="m7 7.6 3.1 3.1"/><path d="m17 7.6-3.1 3.1"/><path d="M12 15.2v3.3"/>',
 };
 
 export const ICON_NAMES = Object.keys(I);

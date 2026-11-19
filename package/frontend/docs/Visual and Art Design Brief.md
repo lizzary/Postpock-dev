@@ -75,6 +75,10 @@ Semantic colour rules used across the app — keep them consistent in new featur
 - **Sync statuses**: synced `--ok`, not synced `--star`, updated `--accent`, unavailable `--ink-4` (struck through).
 - **Connection**: connected `--ok` dot with a soft halo; expired `--warn`; disconnected a hollow ink ring;
   awaiting / verifying `--accent` with a pulsing ring.
+- **Changes** (snapshots): added `--ok`, edited `--accent`, removed `--danger` — as small square badges and tally dots.
+- **Weight of a permission**: granted permissions are star-tinted like any selection; a granted *delete* turns
+  `--danger-soft` with a danger edge, so the heavier grants stand out without a warning text.
+- **Server mode / pending restart**: running `--ok`; saved but waiting for a restart `--warn`, breathing.
 - **Platforms** carry their own brand-softened colour (`platform.color`), used only for the small platform mark and
   colour dots — never as a large surface.
 
@@ -189,6 +193,13 @@ Location: `src/ui/art/starry/`. It is a faithful port of the impasto technique f
   (`rgba(11,17,40,.42)` + blur) in both themes — the painting is always night.
 - **Fade:** the painting dissolves into `--bg` with a multi-stop eased mask (≈ 70 % → 100 % of the hero height) so
   the village stays visible and there is no muddy band.
+- **The login page** is this hero with its doors closed: the same painting full-bleed (the foot sinks into night),
+  the same greeting in the same place, the top bar's brand in the same place, and the password field where the
+  cards will be. Signing in settles the hero to the home page's height (the fade grows in with the home mask's
+  stops), the prompt becomes the home question, then the library takes over with the painting's layers carried in
+  memory — no cut, no re-paint. Keep `LoginPage` on the shared `HomeHero.module.css` / `TopBar.module.css` classes
+  so the two never drift apart. Its password characters are drawn as small four-point stars on the glass (a real
+  password input underneath); they light up in a wave when the password is right.
 
 ### 7.2 Author banners
 
@@ -212,6 +223,21 @@ app family, and check it in both themes next to real covers.
   states reuse it, or add a sibling vignette with the same line weight and colours (ink-3/4 lines, star accent).
 - **Mock artwork** (`src/data/mock/art.js`) only stands in for downloaded images; it is data, not UI art.
 
+### 7.4 Feature art
+
+- **The picture rail** (data security, `features/backup/PictureRail.jsx`): snapshots are framed pictures hung on a
+  gallery rail, oldest on the left. A frame is an ink moulding (`--ink` mixed into `--bg`, so it is dark by day and
+  pale by night), a paper mat and a 2×2 collage of covers saved in that snapshot; it hangs from a nail by a wire.
+  The last frame is empty and dashed — *now*, the folder as it is. The nail of the snapshot the library is based on is
+  a small crescent moon, and a dashed starlight line runs from it to *now*. Hover sways a frame from its nail; a new
+  snapshot is hung with one swing; a deleted one unhooks and drops; while a snapshot is written, the *now* frame fills
+  like a print developing. The miniature in Settings → Data repeats the same rail.
+- **The night window** (first-run dialog, `features/welcome/WelcomeArt.jsx`): a slice of sky in the painting's
+  palette over the linen weave, with slow swirls and twinkling dots; one cream line drawing per step (the pocket,
+  a lit keyhole in an arched door, a computer and a phone joined by a row of stars, a star-bowed key reaching three
+  frames, the hung wall) that draws itself in. Progress is a five-star constellation (Cassiopeia's W) joined as the
+  steps are done.
+
 ---
 
 ## 8. Component vocabulary
@@ -230,6 +256,17 @@ Reuse before creating. All live in `src/ui/components/`:
   sections, for side panes. It is built to stay usable with dozens of platforms and hundreds of authors, so new
   features that pick authors or platforms should reuse it rather than list them as chips.
 - `FolderPicker` (features/folders) — the in-app folder browser; every "choose a folder" action goes through it.
+  With `accept` (extensions) it also lists those files and picks a file (snapshot archives).
+- `Switch` (controls.jsx) — on/off for settings that apply at once; small-radius track, square-ish knob that stretches
+  while pressed. Not for choices between values (use `Segmented`).
+- `PasswordInput` (password.jsx) — a password field with show / hide.
+- `CopyButton`, `QrCode` (share.jsx) — copying confirms itself with a tick; QR codes are always dark modules on a
+  light card in both themes (inverted codes do not scan everywhere).
+- `Dialog` `bare` + `label` — for dialogs with their own layout (settings, first run); `scrimClassName` softens the
+  scrim where the painting should show through.
+- `ServerAddresses` (features/server) — the one way to show where other devices can reach the library (addresses,
+  copy, QR); `PermissionMatrix` and `ScopeField` (features/mcp) — presets plus every permission, and an author scope
+  built on `AuthorSelector` with "include authors added later".
 
 Scale rule: any list of platforms or authors must assume dozens of each. Show a summary (count, first names,
 stacked avatars) and open the full selector on demand; never lay every option out on the page.

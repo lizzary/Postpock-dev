@@ -62,7 +62,7 @@
   box-shadow: 0 0 0 1px currentColor inset;
 }
 
-.right { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex: 1 1 0; }
+.right { display: flex; align-items: center; justify-content: flex-end; gap: 4px; flex: 1 1 0; min-width: max-content; }
 .action {
   display: inline-flex;
   align-items: center;
@@ -72,6 +72,7 @@
   border-radius: var(--r-2);
   font-size: 14px;
   font-weight: 560;
+  white-space: nowrap;
   transition: background-color var(--dur-1), color var(--dur-1);
 }
 .onArt .action { color: rgba(246, 241, 228, 0.92); }
@@ -110,6 +111,10 @@
   line-height: 15px;
   text-align: center;
 }
+
+.serverDot { position: absolute; top: 8px; right: 8px; width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 2px var(--bg); }
+.serverDot[data-state='pendingOn'], .serverDot[data-state='pendingOff'] { background: var(--warn); animation: taskBreath 1.8s ease-in-out infinite; }
+.iconArt .serverDot { box-shadow: 0 0 0 2px rgba(20, 28, 56, 0.9); }
 
 .conn {
   display: inline-flex;
@@ -162,6 +167,10 @@
 .taskPillArt .taskFill { background: rgba(232, 194, 96, 0.22); }
 .taskPillArt .taskSpin { color: var(--star); }
 .taskPillArt .taskMore { background: rgba(246, 241, 228, 0.16); }
+
+/* arriving from the login page: the brand was already there; everything else fades in */
+:global(:root[data-arrive]) .search, :global(:root[data-arrive]) .right { animation: arrive 720ms var(--ease-out) 120ms both; }
+@keyframes arrive { from { opacity: 0; transform: translateY(-4px); } }
 
 @media (max-width: 1180px) {
   .crumbs { display: none; }

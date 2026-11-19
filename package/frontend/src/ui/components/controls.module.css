@@ -107,6 +107,42 @@
 .check[data-state='mixed'] .dash { stroke-dashoffset: 0; }
 .checkLabel { color: var(--ink); }
 
+/* ------------------------------------------------------------------ switch
+   Small corners rather than a pill: the track and knob share the app's 3–8 px radii. */
+.switch {
+  --sw-w: 38px;
+  --sw-h: 22px;
+  --sw-k: 16px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  width: var(--sw-w);
+  height: var(--sw-h);
+  padding: calc((var(--sw-h) - var(--sw-k)) / 2);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--ink) 16%, transparent);
+  transition: background-color 260ms var(--ease-out), box-shadow var(--dur-2);
+}
+.sw_sm { --sw-w: 32px; --sw-h: 19px; --sw-k: 13px; border-radius: 5px; }
+.switch:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 24%, transparent); }
+.swKnob {
+  width: var(--sw-k);
+  height: var(--sw-k);
+  border-radius: 4px;
+  background: #fbf8f2;
+  box-shadow: 0 1px 2px rgba(20, 22, 30, 0.22), 0 0 0 0.5px rgba(20, 22, 30, 0.08);
+  transition: transform 340ms var(--ease-back), width 180ms var(--ease-out), background-color 260ms;
+}
+.sw_sm .swKnob { border-radius: 3px; }
+.swOn, .swOn:hover:not(:disabled) { background: var(--primary); }
+.swOn .swKnob { transform: translateX(calc(var(--sw-w) - var(--sw-h))); background: var(--on-primary); }
+.switch:active:not(:disabled) .swKnob { width: calc(var(--sw-k) + 4px); }
+.swOn:active:not(:disabled) .swKnob { transform: translateX(calc(var(--sw-w) - var(--sw-h) - 4px)); }
+.switch:disabled { opacity: 0.45; }
+:global(:root[data-theme='dark']) .swKnob { background: #c9c5ba; }
+:global(:root[data-theme='dark']) .swOn .swKnob { background: var(--on-primary); }
+
 /* ------------------------------------------------------------------ segmented */
 .seg {
   position: relative;

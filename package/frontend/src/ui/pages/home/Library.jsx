@@ -37,14 +37,15 @@ function DropMarker({ marker }) {
   return <Portal><span className={s.marker} style={{ left: marker.left, top: marker.top, width: marker.width, height: marker.height }} /></Portal>;
 }
 
-/** How many cards fit on one row of the library grid. */
-function useColumns(ref) {
+/** How many cards fit on one row of the library grid (`shown` re-attaches once the grid exists, e.g. after the empty state). */
+function useColumns(ref, shown) {
   const [cols, setCols] = useState(4);
   useLayoutEffect(() => {
+    if (!ref.current) return undefined;
     const ro = new ResizeObserver(([e]) => setCols(Math.max(1, Math.floor((e.contentRect.width + GAP) / (CARD_MIN + GAP)))));
     ro.observe(ref.current);
     return () => ro.disconnect();
-  }, [ref]);
+  }, [ref, shown]);
   return cols;
 }
 
@@ -65,7 +66,7 @@ export function Library({ home }) {
   }, [home.platforms, orderLocal]);
   const top = useRef(null);
   const body = useRef(null);
-  const cols = useColumns(body);
+  const cols = useColumns(body, home.authors.length > 0 || home.platforms.some((p) => p.kind === 'custom'));
 
   const groups = useMemo(() => {
     const q = norm(query.trim());

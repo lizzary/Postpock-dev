@@ -8,7 +8,7 @@ import { Icon } from '../../icons/Icon.jsx';
 import { Avatar, Picture } from '../../components/media.jsx';
 import s from './HomeHero.module.css';
 
-function greetingKey(h) {
+export function greetingKey(h) {
   if (h >= 5 && h < 11) return 'morning';
   if (h >= 11 && h < 13) return 'noon';
   if (h >= 13 && h < 18) return 'afternoon';
@@ -17,7 +17,7 @@ function greetingKey(h) {
 }
 
 /** Reveal accent text only once its face has loaded, so it never swaps in front of the reader. */
-function useFontReady(family, sample) {
+export function useFontReady(family, sample) {
   const [ready, setReady] = useState(() => document.fonts?.check?.(`48px "${family}"`, sample) ?? true);
   useEffect(() => {
     if (ready) return undefined;

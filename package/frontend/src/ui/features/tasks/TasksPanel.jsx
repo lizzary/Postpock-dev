@@ -7,7 +7,8 @@ import { ProgressBar, toast } from '../../components/feedback.jsx';
 import { Avatar } from '../../components/media.jsx';
 import s from './TasksPanel.module.css';
 
-const TYPE_ICON = { 'status-check': 'refresh', sync: 'sync', 'update-check': 'layers', export: 'export' };
+const TYPE_ICON = { 'status-check': 'refresh', sync: 'sync', 'update-check': 'layers', export: 'export', snapshot: 'frame', 'snapshot-export': 'export', 'snapshot-import': 'import' };
+const WAITING = new Set(['connecting', 'preparing', 'scanning', 'reading']);
 
 export function useTaskText() {
   const t = useT();
@@ -17,7 +18,7 @@ export function useTaskText() {
   return {
     scope: (task) => {
       const [first] = task.authors;
-      if (!first) return '';
+      if (!first) return task.label ?? '';
       return task.authors.length > 1 ? t('tasks.scope.many', { name: first.name, n: task.authors.length }) : t('tasks.scope.one', { name: first.name });
     },
     result: (task) => {
@@ -26,6 +27,9 @@ export function useTaskText() {
       if (task.type === 'sync') return t('tasks.result.sync', r) + (r.failed ? t('tasks.result.syncFailed', r) : '');
       if (task.type === 'update-check') return t('tasks.result.update-check', r) + (r.missing ? t('tasks.result.missing', r) : '');
       if (task.type === 'export') return t('tasks.result.export', { files: fmt.number(r.files), size: fmt.bytes(r.bytes) });
+      if (task.type === 'snapshot') return t('tasks.result.snapshot', { changes: fmt.number(r.changes) });
+      if (task.type === 'snapshot-export') return t('tasks.result.snapshot-export', { count: r.count, file: r.file.slice(r.file.lastIndexOf('\\') + 1) });
+      if (task.type === 'snapshot-import') return t('tasks.result.snapshot-import', r) + (r.skipped ? t('tasks.result.importSkipped', r) : '');
       return t('tasks.result.status-check', r);
     },
     error: (task) => t(`tasks.errors.${task.error?.code}`, { platform: platformName(task.error?.platformId) }),
@@ -60,7 +64,7 @@ export function TasksPanel() {
               <span className={s.stage}>{t(`tasks.stages.${task.stage}`)}</span>
               {task.total > 0 && <span className="num">{fmt.number(task.processed)} / {fmt.number(task.total)}</span>}
             </div>
-            <ProgressBar value={task.processed} max={task.total || 1} indeterminate={task.stage === 'connecting' || task.stage === 'preparing'} className={s.bar} />
+            <ProgressBar value={task.processed} max={task.total || 1} indeterminate={WAITING.has(task.stage)} className={s.bar} />
           </>
         )}
         {task.state === 'queued' && <div className={s.meta}><span>{t('tasks.stages.queued')}</span><span>{t('tasks.positions', { n: i + 1 })}</span></div>}

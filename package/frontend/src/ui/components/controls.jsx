@@ -39,6 +39,16 @@ export function Checkbox({ checked, indeterminate, onChange, label, disabled, cl
   );
 }
 
+/** An on/off switch. The knob stretches while pressed and settles with a small overshoot. */
+export function Switch({ checked, onChange, label, disabled, size = 'md', className, ref, ...rest }) {
+  return (
+    <button ref={ref} type="button" role="switch" aria-checked={!!checked} aria-label={label} disabled={disabled}
+      className={cx(s.switch, s[`sw_${size}`], checked && s.swOn, className)} onClick={() => onChange?.(!checked)} {...rest}>
+      <span className={s.swKnob} />
+    </button>
+  );
+}
+
 /** The look of a checkbox without its input, for rows that handle selection themselves. */
 export function Tick({ state = 'off', size = 17 }) {
   return (

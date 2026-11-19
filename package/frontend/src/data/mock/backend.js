@@ -10,7 +10,7 @@ import { hashString } from '../domain/random.js';
 
 // ------------------------------------------------------------------ change feed
 const listeners = new Set();
-const emit = (topic) => { for (const fn of listeners) fn(topic); };
+export const emit = (topic) => { for (const fn of listeners) fn(topic); };
 export const onChange = (fn) => { listeners.add(fn); return () => listeners.delete(fn); };
 let libTimer = null;
 const emitLibrarySoon = () => { if (!libTimer) libTimer = setTimeout(() => { libTimer = null; emit('library'); }, 700); };
@@ -19,6 +19,10 @@ const emitLibrarySoon = () => { if (!libTimer) libTimer = setTimeout(() => { lib
 let config = loadConfig();
 const libraries = new Map();
 const nowIso = () => isoOf(new Date());
+
+/** config.toml, for the other parts of the mock (access, snapshots). */
+export const getConfig = () => config;
+export function patchConfig(patch) { config = { ...config, ...patch }; saveConfig(config); }
 
 function emptyLibrary() {
   let p = 5000, f = 50000;
@@ -50,7 +54,7 @@ function openLibrary(path) {
   let L = libraries.get(path);
   if (!L) {
     const seededLib = path === DEFAULT_DB_PATH;
-    L = { path, ...(seededLib ? seedLibrary() : emptyLibrary()), prefs: loadDbPrefs(path), connections: initialConnections(seededLib) };
+    L = { path, seeded: seededLib, ...(seededLib ? seedLibrary() : emptyLibrary()), prefs: loadDbPrefs(path), connections: initialConnections(seededLib), edits: newEdits() };
     indexLibrary(L);
     // the sample library remembers a post you were reading earlier today
     if (seededLib && !L.prefs.lastViewed) L.prefs.lastViewed = { postId: L.postsByAuthor.get('a_kotori')?.[1]?.id, at: daysAgo(0, Math.max(0, new Date().getHours() - 2), 14) };
@@ -60,7 +64,19 @@ function openLibrary(path) {
   return L;
 }
 const lib = () => openLibrary(config.dbPath);
-const savePrefs = (L) => saveDbPrefs(L.path, L.prefs);
+const savePrefs = (L) => { L.edits.prefs = true; saveDbPrefs(L.path, L.prefs); };
+export { lib as currentLibrary, indexLibrary as reindex };
+
+/**
+ * What changed since the library last matched a snapshot: the earlier values of edited posts and authors, and
+ * whether page settings changed. Added and removed items are found by comparing with the snapshot itself.
+ */
+function newEdits() { return { posts: new Map(), authors: new Map(), prefs: false }; }
+const POST_FIELDS = ['title', 'subtitle', 'publishedAt', 'archivedAt'];
+const AUTHOR_FIELDS = ['platformId', 'name', 'handle', 'url', 'bio', 'avatar', 'banner', 'cover', 'coverFocus'];
+const pick = (o, keys) => Object.fromEntries(keys.map((k) => [k, o[k]]));
+function noteEdit(map, item, fields) { if (!map.has(item.id)) map.set(item.id, pick(item, fields)); }
+export { newEdits };
 
 // ------------------------------------------------------------------ views of the data
 /** Platforms in the user's order (set by dragging on the home page); ones never placed keep their default order. */
@@ -151,6 +167,15 @@ export function getAuthor(id) {
 
 export function listAuthors() { const L = lib(); return L.authors.map((a) => authorChip(L, a.id)); }
 
+/** Every platform and author, with what a picker needs to search and label them (MCP key scopes). */
+export function getAuthorDirectory() {
+  const L = lib();
+  return {
+    platforms: platformsOf(L).map((p) => platformView(L, p)),
+    authors: L.authors.map((a) => ({ ...authorChip(L, a.id), handle: a.handle, postCount: L.postsByAuthor.get(a.id)?.length ?? 0 })),
+  };
+}
+
 const SORTS = {
   'published-desc': (a, b) => b.publishedAt.localeCompare(a.publishedAt),
   'published-asc': (a, b) => a.publishedAt.localeCompare(b.publishedAt),
@@ -188,7 +213,7 @@ export function recordView(postId) {
   const L = lib();
   if (!L.postsById.has(postId)) return;
   L.prefs.lastViewed = { postId, at: nowIso() };
-  savePrefs(L);
+  saveDbPrefs(L.path, L.prefs);   // reading history is not an edit
 }
 
 export function randomPost(excludeId) {
@@ -223,7 +248,8 @@ export function updateAuthor(id, patch) {
   const L = lib();
   const a = L.authorsById.get(id);
   if (!a) return null;
-  for (const k of ['platformId', 'name', 'handle', 'url', 'bio', 'avatar', 'banner', 'cover', 'coverFocus']) if (k in patch) a[k] = patch[k];
+  noteEdit(L.edits.authors, a, AUTHOR_FIELDS);
+  for (const k of AUTHOR_FIELDS) if (k in patch) a[k] = patch[k];
   indexLibrary(L);
   emit('library');
   return getAuthor(id);
@@ -275,7 +301,8 @@ export function updatePost(id, patch) {
   const L = lib();
   const p = L.postsById.get(id);
   if (!p) return null;
-  for (const k of ['title', 'subtitle', 'publishedAt', 'archivedAt']) if (k in patch) p[k] = patch[k];
+  noteEdit(L.edits.posts, p, POST_FIELDS);
+  for (const k of POST_FIELDS) if (k in patch) p[k] = patch[k];
   if (patch.cover) {
     const f = { id: L.nextFileId(), postId: id, name: patch.cover.name, ext: patch.cover.ext, size: patch.cover.size, url: patch.cover.url, resource: 'cover', width: patch.cover.width, height: patch.cover.height, indexInPost: 0 };
     L.files = L.files.filter((x) => x.id !== p.coverFileId || x.resource !== 'cover');
@@ -369,7 +396,7 @@ const tasks = [];
 let taskSeq = 100;
 let ticker = null;
 
-function newTask(L, t) {
+export function newTask(L, t) {
   const task = { id: `t_${++taskSeq}`, lib: L, state: 'queued', stage: 'queued', processed: 0, total: 0, createdAt: nowIso(), ...t };
   tasks.push(task);
   emit('tasks');
@@ -377,23 +404,36 @@ function newTask(L, t) {
   return task;
 }
 const threads = () => config.syncThreads;
-function finish(t, state, extra = {}) {
+export function finish(t, state, extra = {}) {
   Object.assign(t, { state, stage: state, finishedAt: nowIso() }, extra);
   emit('tasks'); emit('checklists'); emit('library');
 }
+
+/** Other parts of the mock add task types: { firstStage, step(task) } — step is called whenever task.nextAt passes. */
+const RUNNERS = {};
+export function registerTaskType(type, runner) { RUNNERS[type] = runner; }
+
+// Two lanes, one task at a time in each: library work (sync, checks, export) and snapshot work, which never waits
+// behind a long sync.
+const LANES = [(x) => !RUNNERS[x.type], (x) => !!RUNNERS[x.type]];
 function tick() {
-  let t = tasks.find((x) => x.state === 'running');
-  if (!t) {
-    t = tasks.find((x) => x.state === 'queued');
-    if (!t) { clearInterval(ticker); ticker = null; return; }
-    Object.assign(t, { state: 'running', stage: t.type === 'export' ? 'preparing' : 'connecting', startedAt: nowIso(), nextAt: Date.now() + 1100 });
-    emit('tasks');
-    return;
+  for (const inLane of LANES) {
+    let t = tasks.find((x) => x.state === 'running' && inLane(x));
+    if (!t) {
+      t = tasks.find((x) => x.state === 'queued' && inLane(x));
+      if (!t) continue;
+      const first = RUNNERS[t.type]?.firstStage ?? (t.type === 'export' ? 'preparing' : 'connecting');
+      Object.assign(t, { state: 'running', stage: first, startedAt: nowIso(), nextAt: Date.now() + (RUNNERS[t.type] ? 500 : 1100) });
+      emit('tasks');
+      continue;
+    }
+    if (Date.now() >= t.nextAt) advance(t);
   }
-  if (Date.now() >= t.nextAt) advance(t);
+  if (!tasks.some((x) => x.state === 'running' || x.state === 'queued')) { clearInterval(ticker); ticker = null; }
 }
 
 function advance(t) {
+  if (RUNNERS[t.type]) { RUNNERS[t.type].step(t); return; }
   const L = t.lib;
   if (t.stage === 'connecting') {
     const bad = [...new Set(t.authorIds.map((id) => L.authorsById.get(id)?.platformId))].find((pid) => L.connections[pid]?.status !== 'connected');
@@ -485,6 +525,7 @@ function taskView(t) {
   return {
     id: t.id, type: t.type, state: t.state, stage: t.stage, processed: t.processed, total: t.total,
     createdAt: t.createdAt, startedAt: t.startedAt ?? null, finishedAt: t.finishedAt ?? null,
+    label: t.label ?? null,
     authors: (t.authorIds ?? []).map((id) => authorChip(L, id)).filter(Boolean),
     result: t.result ?? null, error: t.error ?? null,
   };
@@ -647,8 +688,25 @@ const FS = {
   'E:\\Archive': ['PostPock', '2025'], 'E:\\Archive\\PostPock': [], 'E:\\Archive\\2025': [],
   'E:\\Illustrations': ['References'], 'E:\\Illustrations\\References': [],
 };
+/** Files the pickers can choose (snapshot archives); folder → [{ name, size, modifiedAt, ...payload }]. */
+const FILES = {};
 const parentOf = (path) => { const i = path.replace(/\\$/, '').lastIndexOf('\\'); return i < 0 ? null : i === 2 ? path.slice(0, 3) : path.slice(0, i); };
 const joinPath = (dir, name) => (dir.endsWith('\\') ? dir + name : `${dir}\\${name}`);
+
+/** Place a file in the mock disk; a taken name gets " (2)", " (3)"… like Explorer does. Returns its full path. */
+export function fsAddFile(dir, file) {
+  const list = FILES[dir] ?? (FILES[dir] = []);
+  const dot = file.name.lastIndexOf('.');
+  let name = file.name;
+  for (let n = 2; list.some((f) => f.name === name); n++) name = `${file.name.slice(0, dot)} (${n})${file.name.slice(dot)}`;
+  list.push({ ...file, name });
+  return joinPath(dir, name);
+}
+export function fsFile(path) {
+  const dir = parentOf(path);
+  const name = path.slice(path.lastIndexOf('\\') + 1);
+  return FILES[dir]?.find((f) => f.name === name) ?? null;
+}
 
 /** Drives and the current user's common folders. */
 export function fsRoots() {
@@ -660,20 +718,27 @@ export function fsRoots() {
     ],
   };
 }
-/** Sub-folders of a folder; `library` marks folders that already hold a PostPock database. */
-export function fsList(path) {
+/**
+ * Sub-folders of a folder; `library` marks folders that already hold a PostPock database.
+ * With `accept` (extensions), the files of those types are listed too.
+ */
+export function fsList(path, { accept } = {}) {
   let dir = String(path ?? '').trim().replace(/\//g, '\\');
   if (/^[a-z]:\\?$/i.test(dir)) dir = `${dir.slice(0, 2).toUpperCase()}\\`;
   else dir = dir.replace(/\\+$/, '');
   if (dir) dir = dir[0].toUpperCase() + dir.slice(1);
   const children = FS[dir];
   if (!children) return { ok: false, path: dir };
+  const ext = (n) => n.slice(n.lastIndexOf('.') + 1).toLowerCase();
   return {
     ok: true, path: dir, parent: parentOf(dir),
     entries: [...children].sort((a, b) => a.localeCompare(b)).map((name) => {
       const full = joinPath(dir, name);
-      return { name, path: full, library: libraries.has(full) || full === DEFAULT_DB_PATH, empty: !FS[full]?.length };
+      return { name, path: full, library: libraries.has(full) || full === DEFAULT_DB_PATH, empty: !FS[full]?.length && !FILES[full]?.length };
     }),
+    files: accept ? (FILES[dir] ?? []).filter((f) => accept.includes(ext(f.name)))
+      .sort((a, b) => b.modifiedAt.localeCompare(a.modifiedAt))
+      .map((f) => ({ name: f.name, path: joinPath(dir, f.name), size: f.size, modifiedAt: f.modifiedAt })) : [],
   };
 }
 export function fsCreateFolder(dir, name) {
@@ -685,13 +750,15 @@ export function fsCreateFolder(dir, name) {
 }
 
 // ------------------------------------------------------------------ settings
-export const getSettings = () => ({ ...config, defaultDbPath: DEFAULT_DB_PATH });
+// Only the general settings travel through here; password, server and MCP have their own endpoints (access.js).
+const GENERAL = ['language', 'theme', 'dbPath', 'syncThreads'];
+export const getSettings = () => ({ ...pick(config, GENERAL), defaultDbPath: DEFAULT_DB_PATH });
 export function updateSettings(patch) {
   const prevPath = config.dbPath;
-  config = { ...config, ...patch, syncThreads: Math.min(8, Math.max(1, Math.round(patch.syncThreads ?? config.syncThreads))) };
+  config = { ...config, ...pick({ ...config, ...patch }, GENERAL), syncThreads: Math.min(8, Math.max(1, Math.round(patch.syncThreads ?? config.syncThreads))) };
   saveConfig(config);
   emit('settings');
-  if (config.dbPath !== prevPath) { openLibrary(config.dbPath); emit('library'); emit('connections'); emit('tasks'); emit('checklists'); }
+  if (config.dbPath !== prevPath) { openLibrary(config.dbPath); emit('library'); emit('connections'); emit('tasks'); emit('checklists'); emit('snapshots'); }
   return getSettings();
 }
 

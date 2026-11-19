@@ -59,10 +59,7 @@ events.subscribe((topic) => {
   }
 });
 
-/** useSuspenseQuery(key, fetcher, topics) → data. Suspends until the first load; later refreshes are silent. */
-export function useSuspenseQuery(key, fetcher, topics = []) {
-  const full = `${topics.join(',')}|${key}`;
-  const [, rerender] = useReducer((x) => x + 1, 0);
+function suspenseEntry(full, fetcher) {
   let e = suspended.get(full);
   if (!e) {
     e = { status: 'pending', listeners: new Set(), fetcher };
@@ -74,6 +71,19 @@ export function useSuspenseQuery(key, fetcher, topics = []) {
     suspended.set(full, e);
   }
   e.fetcher = fetcher;
+  return e;
+}
+
+/** Start a page's data early; resolves once it is in the cache (a later useSuspenseQuery then renders at once). */
+export function preloadSuspense(key, fetcher, topics = []) {
+  return suspenseEntry(`${topics.join(',')}|${key}`, fetcher).promise.then(() => undefined, () => undefined);
+}
+
+/** useSuspenseQuery(key, fetcher, topics) → data. Suspends until the first load; later refreshes are silent. */
+export function useSuspenseQuery(key, fetcher, topics = []) {
+  const full = `${topics.join(',')}|${key}`;
+  const [, rerender] = useReducer((x) => x + 1, 0);
+  const e = suspenseEntry(full, fetcher);
   useEffect(() => {
     const entry = suspended.get(full) ?? e;
     if (!suspended.has(full)) suspended.set(full, entry);

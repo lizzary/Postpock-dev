@@ -139,8 +139,11 @@ export function Popover({ open, onClose, anchor, placement = 'bottom-end', offse
   );
 }
 
-/** A centred dialog over a soft scrim. */
-export function Dialog({ open, onClose, title, children, footer, size = 'md', className, initialFocus, dismissible = true }) {
+/**
+ * A centred dialog over a soft scrim. `bare` hands the whole surface to the children (for dialogs with their own
+ * layout); give those a `label`.
+ */
+export function Dialog({ open, onClose, title, label, children, footer, size = 'md', className, scrimClassName, initialFocus, dismissible = true, bare }) {
   const ref = useRef(null);
   const titleId = useId();
   const { mounted, state } = usePresence(open, 260);
@@ -151,16 +154,21 @@ export function Dialog({ open, onClose, title, children, footer, size = 'md', cl
   return (
     <Portal>
       <div className={s.layer} data-state={state}>
-        <div className={s.scrim} onPointerDown={dismissible ? onClose : undefined} />
-        <div ref={ref} className={`${s.dialog} ${s[`size_${size}`]} ${className ?? ''}`} role="dialog" aria-modal="true" aria-labelledby={title ? titleId : undefined} tabIndex={-1}>
-          {title != null && (
-            <header className={s.dialogHead}>
-              <h2 id={titleId} className={s.dialogTitle}>{title}</h2>
-              <button type="button" className={s.close} onClick={onClose} aria-label="close"><Icon name="close" size={18} /></button>
-            </header>
+        <div className={`${s.scrim} ${scrimClassName ?? ''}`} onPointerDown={dismissible ? onClose : undefined} />
+        <div ref={ref} className={`${s.dialog} ${s[`size_${size}`]} ${className ?? ''}`} role="dialog" aria-modal="true"
+          aria-labelledby={title ? titleId : undefined} aria-label={title ? undefined : label} tabIndex={-1}>
+          {bare ? children : (
+            <>
+              {title != null && (
+                <header className={s.dialogHead}>
+                  <h2 id={titleId} className={s.dialogTitle}>{title}</h2>
+                  <button type="button" className={s.close} onClick={onClose} aria-label="close"><Icon name="close" size={18} /></button>
+                </header>
+              )}
+              <div className={s.dialogBody}>{children}</div>
+              {footer && <footer className={s.dialogFoot}>{footer}</footer>}
+            </>
           )}
-          <div className={s.dialogBody}>{children}</div>
-          {footer && <footer className={s.dialogFoot}>{footer}</footer>}
         </div>
       </div>
     </Portal>

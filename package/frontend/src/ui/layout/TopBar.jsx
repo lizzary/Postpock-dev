@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useConnections, useTasks } from '../../bridge/index.js';
+import { useAccess, useConnections, useTasks } from '../../bridge/index.js';
 import { useOverlays, usePageMetaValue } from '../../app/shell.jsx';
 import { Link, paths } from '../../app/router.jsx';
 import { useT } from '../../i18n/index.jsx';
@@ -10,6 +10,7 @@ import { Popover, Tooltip } from '../components/overlay.jsx';
 import { StatusDot } from '../components/feedback.jsx';
 import { TasksPanel } from '../features/tasks/TasksPanel.jsx';
 import { ConnectionsPanel } from '../features/connections/ConnectionsPanel.jsx';
+import { ServerPanel } from '../features/server/ServerPanel.jsx';
 import s from './TopBar.module.css';
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
@@ -64,12 +65,39 @@ export function TopBar() {
             <Icon name="export" size={18} /><span>{t('bar.export')}</span>
           </button>
           <span className={s.divider} />
+          <ServerButton art={art} />
           <TasksButton art={art} />
           <ConnectionButton art={art} platformId={meta.scope === 'home' ? null : meta.platformId} />
           <IconButton icon="settings" label={t('bar.settings')} tone={art ? 'art' : undefined} onClick={() => open('settings')} />
         </div>
       </div>
     </header>
+  );
+}
+
+/** Silent while server mode is off; when it is on (or waiting for a restart), the way to its addresses. */
+function ServerButton({ art }) {
+  const t = useT();
+  const { server } = useAccess();
+  const { open: openOverlay } = useOverlays();
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  if (!server.enabled && !server.running) return null;
+  const state = server.enabled ? (server.running ? 'running' : 'pendingOn') : 'pendingOff';
+  const tip = state === 'running' ? `${t('server.title')} · ${server.addresses[0]?.url.replace(/^http:\/\//, '')}` : `${t('server.title')} · ${t(`server.${state}`)}`;
+  return (
+    <>
+      <Tooltip label={tip}>
+        <button ref={ref} type="button" aria-label={t('server.title')} aria-expanded={open}
+          className={`${s.iconBtn} ${art ? s.iconArt : ''} ${open ? s.iconOn : ''}`} onClick={() => setOpen((o) => !o)}>
+          <Icon name="broadcast" size={19} />
+          <span className={s.serverDot} data-state={state} />
+        </button>
+      </Tooltip>
+      <Popover open={open} onClose={() => setOpen(false)} anchor={ref} placement="bottom-end" label={t('server.title')}>
+        <ServerPanel onSettings={() => { setOpen(false); openOverlay('settings', { section: 'access' }); }} />
+      </Popover>
+    </>
   );
 }
 
