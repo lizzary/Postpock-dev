@@ -82,13 +82,14 @@ export const mcp = {
 // ------------------------------------------------------------------ snapshots (data security)
 /**
  * overview → { dbPath, storage (bytes, the whole history), head, busy, current: { authors, posts },
- *              pending: changes summary, snapshots: [{ id, name, createdAt, source, totals, changes, previews }] (oldest first) }
+ *              pending: { ...changes summary, authors: [{ id, changes }], shared }, snapshots: [{ id, name, createdAt, source, totals, changes, previews }] (oldest first) }
  * changes(id | 'working') → { base, summary, groups: [{ kind, change, count, items }], files: { total, items: [{ path, change }] } }
  */
 export const backup = {
   overview: () => call('read', snapshotBackend.getBackup),
   changes: (id) => call('read', () => snapshotBackend.getChanges(id)),
-  create: (name) => call('write', () => snapshotBackend.createSnapshot(name)),
+  /** authorIds: whose changes the snapshot saves (required). */
+  create: (name, authorIds) => call('write', () => snapshotBackend.createSnapshot(name, authorIds)),
   load: (id, opts) => call('heavy', () => snapshotBackend.loadSnapshot(id, opts)),
   remove: (id) => call('write', () => snapshotBackend.hideSnapshot(id)),
   restore: (id) => call('write', () => snapshotBackend.unhideSnapshot(id)),

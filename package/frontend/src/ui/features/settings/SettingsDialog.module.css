@@ -110,17 +110,17 @@
 .backupGo svg { transition: transform 300ms var(--ease-out); }
 .backup:hover .backupGo svg, .keysCard:hover .backupGo svg { transform: translateX(3px); }
 
-/* the snapshot rail in miniature: frames hung from a rail; the last, dashed one is "now" */
-.mini { width: 132px; height: 44px; flex-shrink: 0; overflow: visible; }
-.miniRail { stroke: var(--ink-4); stroke-width: 1.2; stroke-linecap: round; }
-.miniWire { fill: none; stroke: var(--ink-4); stroke-width: 0.8; }
-.miniNail { fill: var(--ink-3); }
-.miniFrame, .miniNow { transform-box: fill-box; transform-origin: 50% 0; }
-.miniFrame rect { fill: var(--star-soft); stroke: color-mix(in srgb, var(--star) 70%, transparent); stroke-width: 1; }
-.miniNow rect { fill: none; stroke: var(--ink-4); stroke-width: 1; stroke-dasharray: 2 1.6; }
-.miniNow[data-pending='true'] rect { stroke: var(--star); }
-.backup:hover .miniFrame, .backup:hover .miniNow { animation: sway 1.3s var(--ease-out) both; animation-delay: calc(var(--k) * 45ms); }
-@keyframes sway { 20% { transform: rotate(3deg); } 45% { transform: rotate(-2deg); } 70% { transform: rotate(0.8deg); } }
+/* the snapshot timeline in miniature: nodes by date, bars for how much each saved, a ring for now */
+.mini { width: 140px; height: 44px; flex-shrink: 0; overflow: visible; }
+.miniAxis { stroke: var(--line-2); stroke-width: 1; }
+.miniLit { stroke: var(--ok); stroke-width: 1.6; stroke-linecap: round; opacity: 0.7; }
+.miniLit[data-pending='true'] { stroke: var(--star); opacity: 1; }
+.miniSnap rect { fill: color-mix(in srgb, var(--ink) 22%, transparent); transition: fill var(--dur-2); transition-delay: calc(var(--k) * 40ms); }
+.miniSnap circle { fill: var(--bg-raised); stroke: var(--ink-3); stroke-width: 1.3; }
+.backup:hover .miniSnap rect { fill: color-mix(in srgb, var(--star) 70%, transparent); }
+.miniNow circle { fill: var(--bg-raised); stroke: var(--ink-3); stroke-width: 1.3; stroke-dasharray: 2 1.6; }
+.miniNow[data-pending='true'] circle { stroke: var(--star); stroke-dasharray: none; stroke-width: 1.8; }
+.miniNow rect { fill: var(--star-soft); stroke: var(--star); stroke-width: 1; stroke-dasharray: 2 1.5; }
 
 .keysIcon { display: grid; place-items: center; width: 40px; height: 40px; flex-shrink: 0; border-radius: var(--r-3); background: var(--accent-soft); color: var(--accent); }
 .keysCard[data-off='true'] .keysIcon { background: var(--field); color: var(--ink-3); }

@@ -14,14 +14,15 @@
   color: #f6f0de;
 }
 .sky { position: absolute; inset: 0; width: 100%; height: 100%; }
-.swirls { transform-origin: 250px 92px; animation: drift 140s linear infinite; }
+.swirls { transform-origin: 262px 96px; animation: drift 160s linear infinite; }
+.swirlsSmall { transform-origin: 48px 470px; animation: drift 120s linear infinite reverse; }
 @keyframes drift { to { transform: rotate(360deg); } }
 .twinkle { animation: twinkle 3.2s ease-in-out var(--d) infinite; }
 @keyframes twinkle { 50% { opacity: 0.25; } }
 
 .scene { position: absolute; left: 0; right: 0; top: calc(44% - 150px); display: flex; justify-content: center; animation: sceneIn 700ms var(--ease-out) both; }
 @keyframes sceneIn { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
-.drawing { width: 290px; height: 290px; overflow: visible; filter: drop-shadow(0 4px 18px rgba(4, 8, 24, 0.45)); }
+.drawing { width: 290px; height: 290px; overflow: visible; filter: drop-shadow(0 6px 22px rgba(4, 8, 24, 0.4)); }
 .draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 1300ms var(--ease-in-out) var(--delay, 0ms) forwards; }
 @keyframes draw { to { stroke-dashoffset: 0; } }
 .pop { opacity: 0; animation: pop 700ms var(--ease-back) var(--delay, 0ms) forwards; }

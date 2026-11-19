@@ -179,7 +179,10 @@ function Data({ onOpenBackup }) {
   );
 }
 
-/** The data-security entry: a miniature of the snapshot rail, with where things stand. */
+/**
+ * The data-backup entry: the recent snapshots as a small timeline — each one placed by its date, its bar showing how
+ * much it saved — ending in "now" with what is still unsaved.
+ */
 function BackupCard({ onOpen }) {
   const t = useT();
   const fmt = useFormat();
@@ -187,25 +190,34 @@ function BackupCard({ onOpen }) {
   const snaps = data?.snapshots ?? [];
   const last = snaps.at(-1);
   const pending = data?.pending.total ?? 0;
-  const shown = snaps.slice(-7);
+  const shown = snaps.slice(-8);
+  const W = 140, AXIS = 34, X0 = 6, X1 = W - 8;
+  const t0 = shown.length ? Date.parse(shown[0].createdAt) : Date.now(), t1 = Date.now();
+  const xOf = (iso) => X0 + ((Date.parse(iso) - t0) / Math.max(1, t1 - t0)) * (X1 - X0 - 16);
+  const max = Math.max(1, pending, ...shown.map((x) => x.changes.total));
+  const h = (n) => (n ? 4 + 18 * Math.sqrt(n / max) : 0);
+  const lastX = last ? xOf(last.createdAt) : X0;
   return (
     <button type="button" className={s.backup} onClick={onOpen}>
-      <svg className={s.mini} viewBox="0 0 132 44" aria-hidden="true">
-        <path d="M2 6.5h128" className={s.miniRail} />
-        {Array.from({ length: 8 }, (_, i) => {
-          const x = 4 + i * 16, filled = i >= 8 - shown.length - 1 && i < 7, now = i === 7;
-          if (!filled && !now) return null;
+      <svg className={s.mini} viewBox={`0 0 ${W} 44`} aria-hidden="true">
+        <path d={`M2 ${AXIS}H${W - 2}`} className={s.miniAxis} />
+        {last && <path d={`M${lastX} ${AXIS}H${X1}`} className={s.miniLit} data-pending={pending > 0} />}
+        {shown.map((x, i) => {
+          const cx = xOf(x.createdAt);
           return (
-            <g key={i} className={now ? s.miniNow : s.miniFrame} data-pending={now && pending > 0} style={{ '--k': i }}>
-              <path d={`M${x + 1.5} 15 ${x + 6} 7.5l4.5 7.5`} className={s.miniWire} />
-              <circle cx={x + 6} cy={6.5} r={1.3} className={s.miniNail} />
-              <rect x={x} y={15} width={12} height={now ? 12 : 10} rx={1.4} />
+            <g key={x.id} className={s.miniSnap} style={{ '--k': i }}>
+              <rect x={cx - 2} y={AXIS - 5 - h(x.changes.total)} width={4} height={h(x.changes.total)} rx={1.5} />
+              <circle cx={cx} cy={AXIS} r={2.6} />
             </g>
           );
         })}
+        <g className={s.miniNow} data-pending={pending > 0} style={{ '--k': shown.length }}>
+          {pending > 0 && <rect x={X1 - 2.5} y={AXIS - 5 - h(pending)} width={5} height={h(pending)} rx={1.5} />}
+          <circle cx={X1} cy={AXIS} r={3.4} />
+        </g>
       </svg>
       <span className={s.backupText}>
-        <span className={s.backupTitle}><Icon name="shield" size={16} />{t('backup.entry')}</span>
+        <span className={s.backupTitle}><Icon name="snapshot" size={16} />{t('backup.entry')}</span>
         <span className={s.backupMeta}>{data ? (last ? t('settings.backupMeta', { n: snaps.length, date: fmt.relative(last.createdAt) }) : t('settings.backupNone')) : ' '}</span>
         {data && (pending > 0 || last) && <span className={s.backupState} data-pending={pending > 0}><i />{pending > 0 ? t('settings.backupPending', { n: fmt.number(pending) }) : t('settings.backupClean')}</span>}
       </span>

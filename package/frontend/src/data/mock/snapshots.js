@@ -152,18 +152,43 @@ function storageOf(L) {
   return Math.round(bytes * 0.97) + ids.size * 2_048 + B.snapshots.length * 65_536;
 }
 
+/** Only the part of a difference that belongs to the chosen authors; platforms and page settings are library-wide. */
+function scoped(L, d, sel) {
+  const mine = (ids) => ids.filter((id) => sel.has(postOf(L, id)?.authorId));
+  const theirs = (ids) => ids.filter((id) => sel.has(id));
+  return {
+    posts: { added: mine(d.posts.added), deleted: mine(d.posts.deleted), modified: mine(d.posts.modified) },
+    authors: { added: theirs(d.authors.added), deleted: theirs(d.authors.deleted), modified: theirs(d.authors.modified) },
+    platforms: d.platforms, prefs: d.prefs,
+  };
+}
+/** Unsaved changes per author, and the ones that belong to the whole library. */
+function pendingByAuthor(L, d) {
+  const count = new Map();
+  const add = (id) => { if (id) count.set(id, (count.get(id) ?? 0) + 1); };
+  for (const k of ['added', 'deleted', 'modified']) {
+    for (const id of d.posts[k]) add(postOf(L, id)?.authorId);
+    for (const id of d.authors[k]) add(id);
+  }
+  return {
+    authors: [...count].map(([id, changes]) => ({ id, changes })),
+    shared: d.platforms.added.length + d.platforms.deleted.length + (d.prefs ? 1 : 0),
+  };
+}
+
 // ------------------------------------------------------------------ reading
 export function getBackup() {
   const L = currentLibrary(), B = state(L);
   const shown = visible(B);
   const head = B.snapshots.find((s) => s.id === B.head) ?? null;
+  const working = diff(L, head, 'working');
   return {
     dbPath: L.path,
     storage: storageOf(L),
     head: head?.id ?? null,
     busy: B.busy,
     current: { authors: L.authors.length, posts: L.posts.length },
-    pending: summarize(diff(L, head, 'working')),
+    pending: { ...summarize(working), ...pendingByAuthor(L, working) },
     snapshots: shown.map((s, i) => ({
       id: s.id, name: s.name, createdAt: s.createdAt, source: s.source,
       totals: { authors: s.authors.size, posts: s.posts.size },
@@ -189,26 +214,46 @@ export function getChanges(id) {
 }
 
 // ------------------------------------------------------------------ creating
-function commit(L, name) {
+/**
+ * Save the chosen authors' changes on top of the current snapshot. Other authors keep what that snapshot held, and
+ * their changes stay unsaved; platforms and page settings belong to the whole library and always go in.
+ */
+function commit(L, name, sel) {
   const B = state(L);
+  const base = B.snapshots.find((x) => x.id === B.head) ?? EMPTY;
+  const cur = capture(L);
+  const authorOf = (id) => postOf(L, id)?.authorId;
+  const posts = new Set([...base.posts].filter((id) => !sel.has(authorOf(id))));
+  for (const id of cur.posts) if (sel.has(authorOf(id))) posts.add(id);
+  const authors = new Set([...base.authors].filter((id) => !sel.has(id)));
+  for (const id of cur.authors) if (sel.has(id)) authors.add(id);
+  const editedPosts = [...L.edits.posts.keys()].filter((id) => sel.has(authorOf(id)));
+  const editedAuthors = [...L.edits.authors.keys()].filter((id) => sel.has(id));
   const at = nowIso();
   const s = {
-    id: snapId(L, `${at}|${B.snapshots.length}|${Math.random()}`), name: name || null, createdAt: at, source: 'created', hidden: false, ...capture(L),
-    edited: { posts: [...L.edits.posts.keys()], authors: [...L.edits.authors.keys()], prefs: L.edits.prefs },
+    id: snapId(L, `${at}|${B.snapshots.length}|${Math.random()}`), name: name || null, createdAt: at, source: 'created', hidden: false,
+    posts, authors, platforms: cur.platforms, authorScope: [...sel],
+    edited: { posts: editedPosts, authors: editedAuthors, prefs: L.edits.prefs },
   };
   B.snapshots.push(s);
   B.head = s.id;
-  L.edits = newEdits();
+  for (const id of editedPosts) L.edits.posts.delete(id);
+  for (const id of editedAuthors) L.edits.authors.delete(id);
+  L.edits.prefs = false;
   return s;
 }
+const everyone = (L) => new Set(L.authors.map((a) => a.id));
 
-export function createSnapshot(name) {
+/** authorIds: whose changes go into the snapshot (required). */
+export function createSnapshot(name, authorIds) {
   const L = currentLibrary(), B = state(L);
   if (B.busy) return { ok: false, error: 'busy' };
-  const d = diff(L, B.snapshots.find((s) => s.id === B.head) ?? null, 'working');
+  const sel = new Set(authorIds ?? []);
+  if (!sel.size) return { ok: false, error: 'authors' };
+  const d = scoped(L, diff(L, B.snapshots.find((s) => s.id === B.head) ?? null, 'working'), sel);
   if (!summarize(d).total) return { ok: false, error: 'nothing' };
   const label = String(name ?? '').trim() || null;
-  const t = newTask(L, { type: 'snapshot', label, name: label, total: Math.max(1, fileRows(L, d).total) });
+  const t = newTask(L, { type: 'snapshot', label, name: label, authorIds: [...sel], total: Math.max(1, fileRows(L, d).total) });
   B.busy = t.id;
   emit('snapshots');
   return { ok: true, taskId: t.id };
@@ -220,7 +265,7 @@ registerTaskType('snapshot', {
     if (t.stage === 'scanning') { t.stage = 'saving'; t.nextAt = Date.now() + 500; emit('tasks'); return; }
     t.processed = Math.min(t.total, t.processed + Math.max(1, Math.ceil(t.total / 26)));
     if (t.processed < t.total) { t.nextAt = Date.now() + 110; emit('tasks'); return; }
-    const s = commit(t.lib, t.name);
+    const s = commit(t.lib, t.name, new Set(t.authorIds));
     t.lib.backup.busy = null;
     finish(t, 'done', { result: { changes: t.total, id: s.id } });
     emit('snapshots');
@@ -264,7 +309,7 @@ export function loadSnapshot(id, { saveFirst = false } = {}) {
   const L = currentLibrary(), B = state(L);
   const s = B.snapshots.find((x) => x.id === id);
   if (!s || B.busy) return { ok: false };
-  if (saveFirst && summarize(diff(L, B.snapshots.find((x) => x.id === B.head) ?? null, 'working')).total) commit(L, null);
+  if (saveFirst && summarize(diff(L, B.snapshots.find((x) => x.id === B.head) ?? null, 'working')).total) commit(L, null, everyone(L));
   restore(L, s);
   B.head = s.id;
   emit('snapshots'); emit('library'); emit('checklists');

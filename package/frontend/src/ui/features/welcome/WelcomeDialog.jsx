@@ -67,7 +67,7 @@ export default function WelcomeDialog({ open, onClose }) {
         <div className={s.content}>
           <div className={s.topRow}>
             <Segmented size="sm" value={settings.language} onChange={(v) => settingsActions.update({ language: v })} label={t('settings.language')}
-              options={[{ value: 'zh-CN', label: '简体中文' }, { value: 'en', label: 'English' }]} />
+              options={[{ value: 'en', label: 'English' }, { value: 'zh-CN', label: '简体中文' }]} />
           </div>
           <div className={s.step} key={name} style={{ '--dir': dir }}>
             {name === 'welcome' && (

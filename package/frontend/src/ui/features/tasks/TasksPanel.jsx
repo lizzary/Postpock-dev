@@ -7,7 +7,7 @@ import { ProgressBar, toast } from '../../components/feedback.jsx';
 import { Avatar } from '../../components/media.jsx';
 import s from './TasksPanel.module.css';
 
-const TYPE_ICON = { 'status-check': 'refresh', sync: 'sync', 'update-check': 'layers', export: 'export', snapshot: 'frame', 'snapshot-export': 'export', 'snapshot-import': 'import' };
+const TYPE_ICON = { 'status-check': 'refresh', sync: 'sync', 'update-check': 'layers', export: 'export', snapshot: 'snapshot', 'snapshot-export': 'export', 'snapshot-import': 'import' };
 const WAITING = new Set(['connecting', 'preparing', 'scanning', 'reading']);
 
 export function useTaskText() {

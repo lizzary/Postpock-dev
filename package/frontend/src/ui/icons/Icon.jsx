@@ -117,8 +117,8 @@ const I = {
   'eye-off': '<path d="M10.2 5.9a8.6 8.6 0 0 1 1.8-.2c5.7 0 9 6.3 9 6.3a15.4 15.4 0 0 1-2.3 3.1"/><path d="M15.3 15.4a8.7 8.7 0 0 1-3.3 2.9c-5.7 0-9-6.3-9-6.3a15.5 15.5 0 0 1 3.4-4"/><path d="M10.1 10.2a2.7 2.7 0 0 0 3.8 3.8"/><path d="m4.5 4.5 15 15"/>',
   /* data security: a shield that keeps things safe */
   shield: '<path d="M12 3.7 5.4 6.3v5.2c0 4.1 2.8 7.3 6.6 8.7 3.8-1.4 6.6-4.6 6.6-8.7V6.3Z"/><path d="m9.3 12.1 1.9 1.9 3.6-3.8"/>',
-  /* a snapshot is a picture hung on the wall: nail, wire, frame */
-  frame: '<circle cx="12" cy="3.3" r=".95" fill="currentColor"/><path d="m9.4 6.2 2.6-2.4 2.6 2.4"/><rect x="3.5" y="6.2" width="17" height="13.8" rx="1.6"/><path d="m7 16.8 3.2-3.4 2.3 2.4 1.5-1.6 3 2.6"/><circle cx="15.6" cy="10.2" r="1" fill="currentColor"/>',
+  /* a snapshot: a saved copy, kept behind the current one */
+  snapshot: '<path d="M8 4.5h9.5a2 2 0 0 1 2 2V16"/><rect x="4.5" y="7.5" width="12" height="12.5" rx="2"/><path d="m7.9 13.9 2.1 2.1 3.7-3.9"/>',
   import: '<path d="M10 4.5H6.5a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V14"/><path d="M11.5 7v5.5H17"/><path d="m19.5 4.5-8 8"/>',
   changes: '<path d="M13.5 3.5H7.2a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h9.6a2 2 0 0 0 2-2V8.8Z"/><path d="M13.5 3.5v5.3h5.3"/><path d="M12 10.9v4.4"/><path d="M9.8 13.1h4.4"/><path d="M9.8 17.4h4.4"/>',
   /* server mode: the library speaking to the network */

@@ -1,13 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
-import { backupActions, useSettings } from '../../../bridge/index.js';
+import { backupActions, useAuthorDirectory } from '../../../bridge/index.js';
 import { useT } from '../../../i18n/index.jsx';
 import { useFormat } from '../../lib/format.js';
 import { Icon } from '../../icons/Icon.jsx';
 import { Button, Checkbox, Field, TextInput } from '../../components/controls.jsx';
-import { Dialog, Popover } from '../../components/overlay.jsx';
+import { Dialog } from '../../components/overlay.jsx';
 import { ProgressBar, Spinner } from '../../components/feedback.jsx';
 import { FolderPicker } from '../folders/FolderPicker.jsx';
-import { snapshotTitle } from './PictureRail.jsx';
+import { snapshotTitle } from './Timeline.jsx';
+import { AuthorSelector } from '../../components/AuthorSelector.jsx';
 import s from './BackupSheet.module.css';
 
 const BACKUP_DIR = 'D:\\PostPock\\backup';
@@ -24,31 +25,64 @@ export function Thumb({ snap, size = 'md' }) {
 }
 
 // ------------------------------------------------------------------ create
-export function CreatePopover({ open, onClose, anchor, pending, onCreate }) {
+/**
+ * Name the snapshot and choose whose changes it saves. Authors with unsaved changes start chosen; the count below
+ * follows the choice (platforms and page settings belong to the whole library and always go in).
+ */
+export function CreateDialog({ open, onClose, pending, onCreate }) {
   const t = useT();
   const fmt = useFormat();
+  const { data: directory } = useAuthorDirectory();
   const [name, setName] = useState('');
+  const [ids, setIds] = useState([]);
+  const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
-  useEffect(() => { if (open) setName(''); }, [open]);
-  const submit = async (e) => {
-    e.preventDefault();
+  const changes = new Map((pending?.authors ?? []).map((a) => [a.id, a.changes]));
+  const changed = [...changes.keys()];
+  useEffect(() => { if (open) { setName(''); setIds(changed); setTried(false); } }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const total = ids.reduce((n, id) => n + (changes.get(id) ?? 0), 0) + (ids.length ? pending?.shared ?? 0 : 0);
+  const problem = !ids.length ? t('backup.needAuthors') : !total ? t('backup.nothingForAuthors') : null;
+  const submit = async () => {
+    setTried(true);
+    if (problem) return;
     setBusy(true);
-    await onCreate(name);
+    await onCreate(name, ids);
     setBusy(false);
     onClose();
   };
+  // authors with something to save come first in every platform
+  const authors = [...(directory?.authors ?? [])].sort((a, b) => (changes.get(b.id) ?? 0) - (changes.get(a.id) ?? 0));
   return (
-    <Popover open={open} onClose={onClose} anchor={anchor} placement="top-end" label={t('backup.create')}>
-      <form className={s.createPop} onSubmit={submit}>
+    <Dialog open={open} onClose={onClose} size="lg" title={t('backup.create')}
+      footer={<>
+        <span className={`${s.willSave} num`} data-problem={tried && !!problem}>
+          {tried && problem ? <><Icon name="alert" size={14} />{problem}</> : <><i />{t('backup.willSave', { n: fmt.number(total) })}</>}
+        </span>
+        <Button variant="ghost" onClick={onClose}>{t('common.cancel')}</Button>
+        <Button variant="primary" icon="snapshot" loading={busy} disabled={tried && !!problem} onClick={submit}>{t('backup.create')}</Button>
+      </>}>
+      <div className={s.dialogBody}>
         <Field label={t('backup.name')}>
-          <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder={t('backup.namePlaceholder')} maxLength={80} data-autofocus />
+          <TextInput value={name} onChange={(e) => setName(e.target.value)} placeholder={t('backup.namePlaceholder')} maxLength={80} data-autofocus
+            onKeyDown={(e) => { if (e.key === 'Enter') submit(); }} />
         </Field>
-        <div className={s.createFoot}>
-          <span className={`${s.willSave} num`}><i />{t('backup.willSave', { n: fmt.number(pending) })}</span>
-          <Button type="submit" variant="primary" size="sm" icon="frame" loading={busy}>{t('backup.create')}</Button>
-        </div>
-      </form>
-    </Popover>
+        <Field label={t('backup.authors')} aside={(
+          <span className={s.miniActions}>
+            <button type="button" disabled={!changed.length} onClick={() => { setIds(changed); setTried(false); }}>
+              {t('backup.onlyChanged')} <span className="num">{changed.length}</span>
+            </button>
+          </span>
+        )}>
+          <div className={s.authorBox}>
+            <AuthorSelector authors={authors} platforms={directory?.platforms ?? []} value={ids} className={s.authorPicker}
+              onChange={(next) => { setIds(next); setTried(false); }}
+              authorMeta={(a) => (changes.get(a.id)
+                ? <span className={s.authorChanges}>{t('backup.authorChanges', { n: fmt.number(changes.get(a.id)) })}</span>
+                : <span className={s.authorQuiet}>{t('backup.noChanges')}</span>)} />
+          </div>
+        </Field>
+      </div>
+    </Dialog>
   );
 }
 
@@ -223,7 +257,7 @@ export function ImportFlow({ open, onClose, onStarted }) {
         </>}>
         <div className={s.dialogBody}>
           <div className={s.archive}>
-            <span className={s.archiveIcon}><Icon name="frame" size={20} /></span>
+            <span className={s.archiveIcon}><Icon name="snapshot" size={20} /></span>
             <div className={s.archiveText}>
               <div className={s.archiveName}>{info?.name ?? '—'}</div>
               {info && <div className={`${s.archiveMeta} num`}>{fmt.dateSmart(info.modifiedAt)} · {fmt.bytes(info.size)} · {t('backup.importContains', { n: info.snapshots.length })}</div>}
@@ -235,7 +269,7 @@ export function ImportFlow({ open, onClose, onStarted }) {
             <ul className={s.importList}>
               {info.snapshots.map((x) => (
                 <li key={x.id} data-present={x.present}>
-                  <Icon name={x.present ? 'check' : 'frame'} size={15} />
+                  <Icon name={x.present ? 'check' : 'snapshot'} size={15} />
                   <span className={s.importName}>{x.name || t('backup.untitled', { date: fmt.dateSmart(x.createdAt) })}</span>
                   <span className={`${s.importDate} num`}>{fmt.dateTime(x.createdAt)}</span>
                   {x.present && <span className={s.importPresent}>{t('backup.importPresent')}</span>}

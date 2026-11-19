@@ -89,7 +89,7 @@ export default {
   login: {
     prompt: '输入密码以继续', password: '密码', enter: '进入', wrong: '密码不正确', retryIn: '尝试次数过多，请在 {n} 秒后再试',
     show: '显示密码', hide: '隐藏密码', forgot: '忘记密码？',
-    forgotBody: '在运行 PostPock 的电脑上，打开程序目录中的 config.toml，删除其中的密码登录设置，然后重启 PostPock。',
+    forgotTerminal: '在运行 PostPock 的电脑上，打开 PostPock 终端并输入 {cmd}，即可关闭密码保护。', forgotConfig: '如果无法使用 PostPock 终端，请在运行 PostPock 的电脑上打开配置文件 {file}，在其中关闭密码保护。',
   },
   password: {
     title: '密码登录', desc: '打开 PostPock 时需要输入密码，从其他设备访问时也一样。',
@@ -136,9 +136,9 @@ export default {
     reveal: { created: '密钥已创建', regenerated: '已生成新密钥', body: '请现在复制并妥善保存，之后将无法再次查看完整密钥。', config: '连接配置', copyConfig: '复制配置', done: '我已保存' },
   },
   backup: {
-    entry: '数据备份', title: '数据安全',
+    entry: '数据备份', title: '数据备份',
     now: '现在', allSaved: '已全部保存', changesN: '{n} 处更改',
-    create: '创建快照', creating: '正在创建快照', name: '快照名称', namePlaceholder: '可选，例如“整理之前”', willSave: '将保存 {n} 处更改', nothing: '没有需要保存的更改',
+    create: '创建快照', creating: '正在创建快照', authors: '包含的作者', onlyChanged: '有更改的作者', needAuthors: '请至少选择一位作者', nothingForAuthors: '所选作者没有需要保存的更改', authorChanges: '{n} 处更改', noChanges: '无更改', name: '快照名称', namePlaceholder: '可选，例如“整理之前”', willSave: '将保存 {n} 处更改', nothing: '没有需要保存的更改',
     created: '已创建快照', untitled: '{date}的快照',
     storage: '快照共占用 {size}', count: '{n} 个快照',
     emptyTitle: '还没有快照', emptyBody: '快照会保存数据库目录此刻的完整状态。以后无论发生什么，都可以回到这个状态。',

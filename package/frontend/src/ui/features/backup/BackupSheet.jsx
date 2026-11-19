@@ -6,9 +6,9 @@ import { Icon } from '../../icons/Icon.jsx';
 import { Button, IconButton } from '../../components/controls.jsx';
 import { Sheet, Tooltip } from '../../components/overlay.jsx';
 import { Spinner, toast } from '../../components/feedback.jsx';
-import { PictureRail, snapshotTitle } from './PictureRail.jsx';
+import { Timeline, snapshotTitle } from './Timeline.jsx';
 import { Changes } from './Changes.jsx';
-import { CreatePopover, DeleteDialog, ExportDialog, ImportFlow, LoadDialog } from './BackupDialogs.jsx';
+import { CreateDialog, DeleteDialog, ExportDialog, ImportFlow, LoadDialog } from './BackupDialogs.jsx';
 import s from './BackupSheet.module.css';
 
 /** Data security: the snapshot timeline, what changed, and taking, loading, exporting and importing snapshots. */
@@ -22,7 +22,6 @@ export default function BackupSheet({ open, onClose, nonce }) {
   const [naming, setNaming] = useState(false);
   const [leaving, setLeaving] = useState(null);
   const [fresh, setFresh] = useState(() => new Set());
-  const createBtn = useRef(null);
   const known = useRef(null);
   const watching = useRef(null);
 
@@ -50,7 +49,7 @@ export default function BackupSheet({ open, onClose, nonce }) {
   useEffect(() => {
     if (developing) { watching.current = developing.id; return; }
     const done = watching.current && tasks.find((x) => x.id === watching.current);
-    if (done && done.state === 'done') { toast(t('backup.created'), { tone: 'ok', icon: 'frame' }); watching.current = null; }
+    if (done && done.state === 'done') { toast(t('backup.created'), { tone: 'ok', icon: 'snapshot' }); watching.current = null; }
   }, [developing, tasks, t]);
 
   const snaps = data?.snapshots ?? [];
@@ -61,9 +60,9 @@ export default function BackupSheet({ open, onClose, nonce }) {
   const pending = data?.pending.total ?? 0;
   const busy = !!data?.busy || !!developing;
 
-  const create = async (name) => {
-    const res = await backupActions.create(name);
-    if (!res.ok && res.error === 'nothing') toast(t('backup.nothing'), { tone: 'warn' });
+  const create = async (name, authorIds) => {
+    const res = await backupActions.create(name, authorIds);
+    if (!res.ok && res.error === 'nothing') toast(t('backup.nothingForAuthors'), { tone: 'warn' });
   };
   const remove = async (target) => {
     setDialog(null);
@@ -81,7 +80,7 @@ export default function BackupSheet({ open, onClose, nonce }) {
     <Sheet open={open} onClose={onClose} label={t('backup.title')}>
       <div className={s.sheet}>
         <header className={s.head}>
-          <span className={s.mark}><Icon name="shield" size={19} /></span>
+          <span className={s.mark}><Icon name="snapshot" size={19} /></span>
           <h2 className={s.title}>{t('backup.title')}</h2>
           <Button variant="ghost" size="sm" icon="import" onClick={() => setDialog({ kind: 'import' })}>{t('backup.import')}</Button>
           <Button variant="ghost" size="sm" icon="export" disabled={!snaps.length} onClick={() => setDialog({ kind: 'export' })}>{t('backup.export')}</Button>
@@ -91,7 +90,7 @@ export default function BackupSheet({ open, onClose, nonce }) {
 
         <div className={s.wall}>
           {data ? (
-            <PictureRail snapshots={snaps} head={data.head} pending={pending} selected={selected} onSelect={setSelected}
+            <Timeline snapshots={snaps} head={data.head} pending={pending} selected={selected} onSelect={setSelected}
               developing={developing} fresh={fresh} leaving={leaving} />
           ) : <div className={s.wallWait}><Spinner size={20} /></div>}
           {data && !snaps.length && !developing && (
@@ -120,7 +119,7 @@ export default function BackupSheet({ open, onClose, nonce }) {
                 <h3 className={s.aboutTitle}>{snapshotTitle(t, fmt, snap)}</h3>
                 <p className={`${s.aboutMeta} num`}>{t('backup.contains', { authors: fmt.number(snap.totals.authors), posts: fmt.number(snap.totals.posts) })}</p>
                 <p className={s.aboutSub}>{index > 0 ? t('backup.sincePrev') : t('backup.first')}</p>
-                {snap.id === data.head && <p className={s.headNote}><Icon name="moon" size={15} />{t('backup.basedOn')}</p>}
+                {snap.id === data.head && <p className={s.headNote}><span className={s.headDot} />{t('backup.basedOn')}</p>}
                 <div className={s.aboutActions}>
                   <Button icon="history" disabled={busy} onClick={() => setDialog({ kind: 'load', snap })}>{t('backup.load')}</Button>
                   <Button variant="ghost" icon="export" onClick={() => setDialog({ kind: 'export', snap })}>{t('backup.exportOne')}</Button>
@@ -147,13 +146,13 @@ export default function BackupSheet({ open, onClose, nonce }) {
             {data && <span className={`${s.count} num`}>{t('backup.count', { n: snaps.length })}</span>}
           </span>
           <span className={s.dbPath} title={data?.dbPath}>{data?.dbPath}</span>
-          <Button ref={createBtn} variant="primary" icon="frame" loading={busy} disabled={!data || busy || !pending} onClick={() => setNaming(true)}>
+          <Button variant="primary" icon="snapshot" loading={busy} disabled={!data || busy || !pending} onClick={() => setNaming(true)}>
             {busy ? t('backup.creating') : t('backup.create')}
           </Button>
         </footer>
       </div>
 
-      <CreatePopover open={naming} onClose={() => setNaming(false)} anchor={createBtn} pending={pending} onCreate={create} />
+      <CreateDialog open={naming} onClose={() => setNaming(false)} pending={data?.pending} onCreate={create} />
       <LoadDialog snap={dialog?.kind === 'load' ? dialog.snap : null} pending={pending} onClose={() => setDialog(null)}
         onLoaded={(x) => { setDialog(null); setSelected(x.id); toast(t('backup.loaded', { name: snapshotTitle(t, fmt, x) }), { tone: 'ok', icon: 'history' }); }} />
       <DeleteDialog snap={dialog?.kind === 'delete' ? dialog.snap : null} onClose={() => setDialog(null)} onConfirm={remove} />

@@ -89,7 +89,7 @@ export default {
   login: {
     prompt: 'Enter your password to continue', password: 'Password', enter: 'Enter', wrong: 'That password isn’t right', retryIn: 'Too many tries. Try again in {n} seconds',
     show: 'Show password', hide: 'Hide password', forgot: 'Forgot your password?',
-    forgotBody: 'On the computer that runs PostPock, open config.toml in the program folder, remove the password login settings, then restart PostPock.',
+    forgotTerminal: 'On the computer running PostPock, open the PostPock terminal and enter {cmd} to turn off password protection.', forgotConfig: 'If you can’t use the PostPock terminal, open the {file} configuration file on the computer running PostPock and turn off password protection there.',
   },
   password: {
     title: 'Password login', desc: 'Ask for a password whenever PostPock is opened, including from other devices.',
@@ -136,9 +136,9 @@ export default {
     reveal: { created: 'Key created', regenerated: 'New key generated', body: 'Copy it now and keep it somewhere safe. You won’t be able to see the full key again.', config: 'Connection settings', copyConfig: 'Copy settings', done: 'I’ve saved it' },
   },
   backup: {
-    entry: 'Data backup', title: 'Data security',
+    entry: 'Data backup', title: 'Data backup',
     now: 'Now', allSaved: 'All saved', changesN: { one: '{n} change', other: '{n} changes' },
-    create: 'Create snapshot', creating: 'Creating snapshot', name: 'Snapshot name', namePlaceholder: 'Optional, e.g. “Before tidying up”', willSave: { one: 'Saves {n} change', other: 'Saves {n} changes' }, nothing: 'Nothing has changed since the last snapshot',
+    create: 'Create snapshot', creating: 'Creating snapshot', authors: 'Authors to include', onlyChanged: 'Authors with changes', needAuthors: 'Choose at least one author', nothingForAuthors: 'The chosen authors have nothing new to save', authorChanges: { one: '{n} change', other: '{n} changes' }, noChanges: 'No changes', name: 'Snapshot name', namePlaceholder: 'Optional, e.g. “Before tidying up”', willSave: { one: 'Saves {n} change', other: 'Saves {n} changes' }, nothing: 'Nothing has changed since the last snapshot',
     created: 'Snapshot created', untitled: 'Snapshot of {date}',
     storage: 'Snapshots use {size}', count: { one: '{n} snapshot', other: '{n} snapshots' },
     emptyTitle: 'No snapshots yet', emptyBody: 'A snapshot keeps the database folder exactly as it is now. Whatever happens later, you can come back to it.',

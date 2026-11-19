@@ -94,7 +94,12 @@ export function LoginPage({ opening, onOpened }) {
               {waiting && <><Icon name="clock" size={14} /><Countdown until={retryAt} render={(n) => t('login.retryIn', { n })} /></>}
             </div>
             <button type="button" className={s.forgot} aria-expanded={help} onClick={() => setHelp((v) => !v)}>{t('login.forgot')}</button>
-            {help && <p className={s.help}>{t('login.forgotBody')}</p>}
+            {help && (
+              <div className={s.help}>
+                <p><Rich text={t('login.forgotTerminal', { cmd: '\u0000' })} code="/reset_pwd" /></p>
+                <p><Rich text={t('login.forgotConfig', { file: '\u0000' })} code="config.toml" /></p>
+              </div>
+            )}
           </form>
         </div>
       </section>
@@ -153,6 +158,12 @@ function StarField({ value, onChange, inputRef, disabled, status, shake, action 
       {action}
     </div>
   );
+}
+
+/** A sentence with one command or file name in it, set apart as code. */
+function Rich({ text, code }) {
+  const [a, b] = text.split('\u0000');
+  return <>{a}<code className={s.code}>{code}</code>{b}</>;
 }
 
 /** Checking a password is usually instant; only show that it's working if it isn't. */

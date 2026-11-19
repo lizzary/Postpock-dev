@@ -225,17 +225,20 @@ app family, and check it in both themes next to real covers.
 
 ### 7.4 Feature art
 
-- **The picture rail** (data security, `features/backup/PictureRail.jsx`): snapshots are framed pictures hung on a
-  gallery rail, oldest on the left. A frame is an ink moulding (`--ink` mixed into `--bg`, so it is dark by day and
-  pale by night), a paper mat and a 2×2 collage of covers saved in that snapshot; it hangs from a nail by a wire.
-  The last frame is empty and dashed — *now*, the folder as it is. The nail of the snapshot the library is based on is
-  a small crescent moon, and a dashed starlight line runs from it to *now*. Hover sways a frame from its nail; a new
-  snapshot is hung with one swing; a deleted one unhooks and drops; while a snapshot is written, the *now* frame fills
-  like a print developing. The miniature in Settings → Data repeats the same rail.
+- **The snapshot timeline** (data backup, `features/backup/Timeline.jsx`): a horizontal time axis, oldest on the
+  left. Each snapshot is a small raised card (a strip of three covers it saved, date and time, its name, and a
+  +added / ~edited / −removed tally in the change colours) standing on a stem above its node on the axis; month labels
+  sit under the axis. The snapshot the library is based on has a filled, ringed starlight node, and the axis from it to
+  *now* is lit — starlight while there are unsaved changes, moss when everything is saved. *Now* is the last card,
+  dashed, showing how many changes are unsaved (its node pings while it waits); while a snapshot is written it fills
+  with a progress bar. New snapshots slide out of *now*; deleted ones fold away. The card in Settings → Data repeats it
+  in miniature: nodes placed by date, a bar per snapshot for how much it saved, and a ring for *now*.
 - **The night window** (first-run dialog, `features/welcome/WelcomeArt.jsx`): a slice of sky in the painting's
-  palette over the linen weave, with slow swirls and twinkling dots; one cream line drawing per step (the pocket,
-  a lit keyhole in an arched door, a computer and a phone joined by a row of stars, a star-bowed key reaching three
-  frames, the hung wall) that draws itself in. Progress is a five-star constellation (Cassiopeia's W) joined as the
+  palette over the linen weave, with slow smooth swirls, a faint wind line and twinkling dots; one fine cream line
+  drawing per step, each with a soft glow behind its subject (the moon kept in a pocket, a lit keyhole in an arched
+  door, a computer and a phone joined by a row of stars, the library linked to the assistants its keys allow, three
+  choices in orbit around a tick) that draws itself in. Dashed lines fade in rather than draw (drawing would erase
+  their dashes). Progress is a five-star constellation (Cassiopeia's W) joined as the
   steps are done.
 
 ---

@@ -14,6 +14,7 @@ import { useTaskText } from '../../features/tasks/TasksPanel.jsx';
 import s from './AuthorPage.module.css';
 
 const PAGE_SIZE = 12;
+const TASK_ICON = { export: 'export', snapshot: 'snapshot' };
 
 export function AuthorPage({ id }) {
   const t = useT();
@@ -105,7 +106,7 @@ function ActiveTasks({ authorId }) {
     <div className={s.tasks}>
       {tasks.map((task) => (
         <div key={task.id} className={s.task} data-state={task.state}>
-          <Icon name={task.type === 'export' ? 'export' : 'sync'} size={16} className={s.taskIcon} />
+          <Icon name={TASK_ICON[task.type] ?? 'sync'} size={16} className={s.taskIcon} />
           <span className={s.taskName}>{t(`tasks.types.${task.type}`)}</span>
           <span className={s.taskStage}>{t(`tasks.stages.${task.stage}`)}</span>
           {task.state === 'running' && task.total > 0 && task.stage !== 'connecting' && <span className={`${s.taskCount} num`}>{fmt.number(task.processed)} / {fmt.number(task.total)}</span>}

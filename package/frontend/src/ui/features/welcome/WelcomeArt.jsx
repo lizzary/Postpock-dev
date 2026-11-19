@@ -4,125 +4,176 @@ import s from './Welcome.module.css';
 
 const CREAM = '#f6f0de';
 const STAR = '#f1d35a';
-const MOON = '#e8b84e';
+const MOON = '#ecc05a';
+const NIGHT = '#1a2a5c';
 
-/** A spiral stroke, like the sky of the home painting. */
-function swirl(cx, cy, r, turns, squash = 0.86) {
-  const pts = [];
-  for (let i = 0; i <= 80; i++) {
-    const t = i / 80, a = t * turns * Math.PI * 2, rr = r * t;
-    pts.push(`${(cx + rr * Math.cos(a)).toFixed(1)} ${(cy + rr * Math.sin(a) * squash).toFixed(1)}`);
+const f1 = (n) => n.toFixed(1);
+/** Catmull-Rom → cubic Bézier, so every curve is smooth rather than a chain of segments. */
+function smooth(pts) {
+  let d = `M${f1(pts[0][0])} ${f1(pts[0][1])}`;
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+    d += `C${f1(p1[0] + (p2[0] - p0[0]) / 6)} ${f1(p1[1] + (p2[1] - p0[1]) / 6)} ${f1(p2[0] - (p3[0] - p1[0]) / 6)} ${f1(p2[1] - (p3[1] - p1[1]) / 6)} ${f1(p2[0])} ${f1(p2[1])}`;
   }
-  return `M${pts.join('L')}`;
+  return d;
+}
+/** A spiral arm like the sky of the home painting, starting a little way out from the eye. */
+function swirl(cx, cy, r0, r1, turns, phase = 0, squash = 0.84) {
+  const pts = [];
+  for (let i = 0; i <= 28; i++) {
+    const t = i / 28, a = phase + t * turns * Math.PI * 2, r = r0 + (r1 - r0) * t;
+    pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a) * squash]);
+  }
+  return smooth(pts);
 }
 const SKY = [
-  { d: swirl(250, 92, 70, 2.4), w: 7, c: '#7fa9c8', o: 0.28 },
-  { d: swirl(250, 92, 52, 2.2), w: 4, c: '#e7eedc', o: 0.22 },
-  { d: swirl(54, 236, 46, 2.1), w: 5, c: '#7fa9c8', o: 0.2 },
+  { d: swirl(262, 96, 10, 74, 1.9), w: 2.4, c: '#8fb6d2', o: 0.32 },
+  { d: swirl(262, 96, 16, 60, 1.6, 2.4), w: 1.2, c: '#e9efe0', o: 0.3 },
+  { d: swirl(262, 96, 26, 84, 1.2, 4.2), w: 1, c: '#8fb6d2', o: 0.18 },
+  { d: swirl(48, 470, 8, 52, 1.7, 1), w: 2, c: '#8fb6d2', o: 0.18 },
+  { d: swirl(48, 470, 14, 40, 1.4, 3.4), w: 1, c: '#e9efe0', o: 0.16 },
 ];
-const DOTS = [[34, 54, 1.6], [120, 30, 1.2], [300, 186, 1.4], [76, 132, 1], [178, 74, 1.3], [292, 310, 1.1], [26, 360, 1.3], [210, 388, 1], [140, 440, 1.2]];
+const WIND = smooth([[-10, 214], [70, 200], [150, 222], [230, 206], [350, 226]]);
+const DOTS = [[34, 54, 1.3], [120, 30, 1], [300, 188, 1.2], [70, 150, 0.9], [184, 64, 1.1], [296, 330, 1], [24, 330, 1.1], [214, 400, 0.9], [140, 452, 1], [310, 470, 0.9]];
 
 export function WelcomeArt({ step, total }) {
   return (
     <div className={s.art} aria-hidden="true">
       <svg className={s.sky} viewBox="0 0 340 600" preserveAspectRatio="xMidYMid slice">
         <defs>
-          <radialGradient id="ppw-glow" cx="0.74" cy="0.16" r="0.5">
-            <stop offset="0" stopColor="#f4d77a" stopOpacity="0.32" />
+          <radialGradient id="ppw-moonlight" cx="0.77" cy="0.16" r="0.42">
+            <stop offset="0" stopColor="#f4d77a" stopOpacity="0.24" />
             <stop offset="1" stopColor="#f4d77a" stopOpacity="0" />
           </radialGradient>
+          <linearGradient id="ppw-floor" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0.62" stopColor="#0e1838" stopOpacity="0" />
+            <stop offset="1" stopColor="#0e1838" stopOpacity="0.55" />
+          </linearGradient>
         </defs>
-        <rect width="340" height="600" fill="url(#ppw-glow)" />
+        <rect width="340" height="600" fill="url(#ppw-moonlight)" />
         <g className={s.swirls}>
-          {SKY.map((p, i) => <path key={i} d={p.d} fill="none" stroke={p.c} strokeWidth={p.w} strokeLinecap="round" opacity={p.o} />)}
+          {SKY.slice(0, 3).map((p, i) => <path key={i} d={p.d} fill="none" stroke={p.c} strokeWidth={p.w} strokeLinecap="round" opacity={p.o} />)}
         </g>
+        <g className={s.swirlsSmall}>
+          {SKY.slice(3).map((p, i) => <path key={i} d={p.d} fill="none" stroke={p.c} strokeWidth={p.w} strokeLinecap="round" opacity={p.o} />)}
+        </g>
+        <path d={WIND} fill="none" stroke="#c9dccf" strokeWidth="1" strokeLinecap="round" opacity=".12" />
         {DOTS.map(([x, y, r], i) => <circle key={i} className={s.twinkle} style={{ '--d': `${(i * 0.53) % 3}s` }} cx={x} cy={y} r={r} fill={CREAM} />)}
+        <rect width="340" height="600" fill="url(#ppw-floor)" />
       </svg>
       <div className={s.scene} key={step}>
-        <svg viewBox="0 0 300 300" className={s.drawing}>{SCENES[step]?.()}</svg>
+        <svg viewBox="0 0 300 300" className={s.drawing}>
+          <defs>
+            <radialGradient id="ppw-glow"><stop offset="0" stopColor={STAR} stopOpacity=".34" /><stop offset="1" stopColor={STAR} stopOpacity="0" /></radialGradient>
+            <radialGradient id="ppw-halo"><stop offset="0" stopColor={CREAM} stopOpacity=".1" /><stop offset="1" stopColor={CREAM} stopOpacity="0" /></radialGradient>
+          </defs>
+          <circle cx="150" cy="150" r="130" fill="url(#ppw-halo)" />
+          {SCENES[step]?.()}
+        </svg>
       </div>
       <Constellation step={step} total={total} />
     </div>
   );
 }
 
-const line = { fill: 'none', stroke: CREAM, strokeWidth: 2.2, strokeLinecap: 'round', strokeLinejoin: 'round', pathLength: 1 };
-const Draw = ({ d, delay = 0, ...rest }) => <path d={d} {...line} className={s.draw} style={{ '--delay': `${delay}ms` }} {...rest} />;
-const Star = ({ x, y, r = 6, delay = 0 }) => (
-  <path className={s.pop} style={{ '--delay': `${delay}ms`, transformOrigin: `${x}px ${y}px` }} fill={STAR}
-    d={`M${x} ${y - r}c${r * 0.08} ${r * 0.62} ${r * 0.3} ${r * 0.84} ${r} ${r}c${-r * 0.7} ${r * 0.16} ${-r * 0.92} ${r * 0.38} ${-r} ${r}c${-r * 0.08} ${-r * 0.62} ${-r * 0.3} ${-r * 0.84} ${-r} ${-r}c${r * 0.7} ${-r * 0.16} ${r * 0.92} ${-r * 0.38} ${r} ${-r}Z`} />
+const line = { fill: 'none', stroke: CREAM, strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round', pathLength: 1 };
+const fine = { ...line, strokeWidth: 1.1, opacity: 0.55 };
+const Draw = ({ d, delay = 0, weight = line, fill, ...rest }) => (
+  <path d={d} {...weight} fill={fill ?? 'none'} className={s.draw} style={{ '--delay': `${delay}ms` }} {...rest} />
+);
+/** A dashed line (stitching, a link not granted): it fades in, since drawing it in would erase its dashes. */
+const Dash = ({ d, delay = 0, dash = '2 6' }) => (
+  <path d={d} fill="none" stroke={CREAM} strokeWidth="1.1" strokeLinecap="round" strokeDasharray={dash} opacity=".55" className={s.fade} style={{ '--delay': `${delay}ms` }} />
+);
+const Glow = ({ x, y, r, delay = 0 }) => <circle cx={x} cy={y} r={r} fill="url(#ppw-glow)" className={s.fade} style={{ '--delay': `${delay}ms` }} />;
+const Star = ({ x, y, r = 6, delay = 0, color = STAR }) => (
+  <path className={s.pop} style={{ '--delay': `${delay}ms`, transformOrigin: `${x}px ${y}px` }} fill={color}
+    d={`M${x} ${y - r}c${r * 0.1} ${r * 0.62} ${r * 0.28} ${r * 0.84} ${r} ${r}c${-r * 0.72} ${r * 0.16} ${-r * 0.9} ${r * 0.38} ${-r} ${r}c${-r * 0.1} ${-r * 0.62} ${-r * 0.28} ${-r * 0.84} ${-r} ${-r}c${r * 0.72} ${-r * 0.16} ${r * 0.9} ${-r * 0.38} ${r} ${-r}Z`} />
 );
 const Moon = ({ x, y, r = 16, delay = 0 }) => (
   <path className={s.pop} style={{ '--delay': `${delay}ms`, transformOrigin: `${x}px ${y}px` }} fill={MOON}
     d={`M${x} ${y - r}a${r} ${r} 0 1 0 ${r * 0.82} ${r * 1.6} ${r * 0.8} ${r * 0.8} 0 1 1 ${-r * 0.82} ${-r * 1.6}Z`} />
 );
+const Dot = ({ x, y, r = 1.6, delay = 0 }) => <circle cx={x} cy={y} r={r} fill={CREAM} className={s.fade} style={{ '--delay': `${delay}ms` }} />;
 
 const SCENES = [
-  // welcome: the pocket that keeps the moon, and little framed works falling into it
+  // welcome: the pocket that keeps the moon
   () => (
     <>
-      <Moon x={176} y={66} r={22} delay={500} />
-      <Draw d="M72 140h156v44a78 78 0 0 1-156 0Z" />
-      <path d="M90 162h120" fill="none" stroke={CREAM} strokeWidth="1.6" strokeDasharray="3 7" strokeLinecap="round" opacity=".7" className={s.fade} style={{ '--delay': '700ms' }} />
-      <g className={s.fall} style={{ '--delay': '900ms' }}><rect x="98" y="88" width="30" height="24" rx="2" {...line} transform="rotate(-12 113 100)" /></g>
-      <g className={s.fall} style={{ '--delay': '1150ms' }}><rect x="190" y="104" width="24" height="19" rx="2" {...line} transform="rotate(10 202 113)" /></g>
-      <Star x={240} y={58} r={6} delay={1300} />
-      <Star x={62} y={92} r={4} delay={1450} />
+      <Glow x={158} y={116} r={78} delay={300} />
+      <Moon x={152} y={92} r={34} delay={250} />
+      <Draw d="M74 140h152v38a76 76 0 0 1-152 0Z" fill={NIGHT} />
+      <Dash d="M88 154h124" dash="2 6" delay={500} />
+      <Dash d="M90 154v22a60 60 0 0 0 120 0v-22" dash="2 6" delay={650} />
+      <Star x={232} y={86} r={7} delay={900} />
+      <Star x={80} y={100} r={4.5} delay={1050} />
+      <Dot x={212} y={58} delay={1100} /><Dot x={98} y={66} r={1.2} delay={1200} /><Dot x={246} y={124} r={1.2} delay={1250} />
     </>
   ),
-  // password: an arched gallery door, its keyhole lit
+  // password: an arched door, its keyhole lit from within
   () => (
     <>
-      <Moon x={214} y={62} r={16} delay={600} />
-      <Draw d="M100 244V136a50 50 0 0 1 100 0v108" />
-      <Draw d="M116 244V142a34 34 0 0 1 68 0v102" delay={200} />
-      <Draw d="M70 244h160" delay={350} />
-      <circle cx="150" cy="186" r="7.5" fill={STAR} className={s.pop} style={{ '--delay': '900ms', transformOrigin: '150px 190px' }} />
-      <path d="M146.5 190h7l-1.8 15h-3.4Z" fill={STAR} className={s.pop} style={{ '--delay': '900ms', transformOrigin: '150px 190px' }} />
-      <circle cx="150" cy="190" r="26" fill={STAR} opacity=".12" className={s.glow} />
-      <Star x={74} y={88} r={5} delay={1100} />
+      <Moon x={228} y={66} r={15} delay={700} />
+      <Glow x={150} y={178} r={44} delay={900} />
+      <Draw d="M94 246V142a56 56 0 0 1 112 0v104" fill="rgba(246,240,222,.04)" />
+      <Draw d="M108 246V146a42 42 0 0 1 84 0v100" delay={150} />
+      <Draw d="M122 154a28 28 0 0 1 56 0v4h-56Z" weight={fine} delay={350} />
+      <Draw d="M122 208h56v28h-56Z" weight={fine} delay={420} />
+      <circle cx="150" cy="176" r="6.5" fill={STAR} className={s.pop} style={{ '--delay': '950ms', transformOrigin: '150px 182px' }} />
+      <path d="M146.6 180h6.8l-1.6 13h-3.6Z" fill={STAR} className={s.pop} style={{ '--delay': '950ms', transformOrigin: '150px 182px' }} />
+      <Draw d="M76 246h148" delay={250} />
+      <Draw d="M90 254h120" weight={fine} delay={350} />
+      <Star x={72} y={92} r={4.5} delay={1150} />
+      <Dot x={250} y={110} r={1.2} delay={1200} />
     </>
   ),
-  // server mode: the computer and a phone, the light carried between them by a row of stars
+  // server mode: the computer and a phone, light carried between them by a row of stars
   () => (
     <>
-      <Draw d="M50 150h104a6 6 0 0 1 6 6v58H44v-58a6 6 0 0 1 6-6Z" />
-      <Draw d="M30 224h144l-8 10H38Z" delay={150} />
-      <Draw d="M210 140h40a9 9 0 0 1 9 9v84a9 9 0 0 1-9 9h-40a9 9 0 0 1-9-9v-84a9 9 0 0 1 9-9Z" delay={250} />
-      <Draw d="M222 230h16" delay={400} />
-      <path d="M104 140C122 72 196 66 230 132" fill="none" stroke={STAR} strokeWidth="3.2" strokeLinecap="round" strokeDasharray="0.1 13" className={s.travel} />
-      <Star x={168} y={84} r={6} delay={900} />
-      <Moon x={66} y={70} r={14} delay={700} />
+      <Moon x={70} y={70} r={13} delay={700} />
+      <Draw d="M56 150h96a6 6 0 0 1 6 6v58H50v-58a6 6 0 0 1 6-6Z" fill="rgba(246,240,222,.04)" />
+      <Draw d="M64 170h40M64 182h64M64 194h28" weight={fine} delay={400} />
+      <Draw d="M36 222h136l-7 9H43Z" delay={150} />
+      <Draw d="M206 138h40a10 10 0 0 1 10 10v82a10 10 0 0 1-10 10h-40a10 10 0 0 1-10-10v-82a10 10 0 0 1 10-10Z" fill="rgba(246,240,222,.04)" delay={250} />
+      <Draw d="M219 148h14M220 230h12" weight={fine} delay={450} />
+      <path d="M110 140C128 76 200 70 228 128" fill="none" stroke={STAR} strokeWidth="2.6" strokeLinecap="round" strokeDasharray="0.1 12" className={s.travel} />
+      <Star x={168} y={86} r={6} delay={900} />
+      <Dot x={250} y={84} delay={1100} /><Dot x={120} y={104} r={1.2} delay={1150} />
     </>
   ),
-  // MCP: a key with a star for a bow, reaching only the works it is allowed to
+  // MCP: the library at the centre; assistants reach it only along the links their keys allow
   () => (
     <>
-      <Draw d="M96 126a28 28 0 1 1 0 48a28 28 0 1 1 0-48Z" />
-      <Star x={96} y={150} r={9} delay={700} />
-      <Draw d="M124 150h76" delay={200} />
-      <Draw d="M180 150v14M194 150v10" delay={350} />
-      <path d="M200 150 236 104M200 150l42 32M200 150l14 64" fill="none" stroke={CREAM} strokeWidth="1.2" strokeDasharray="2 5" opacity=".6" className={s.fade} style={{ '--delay': '800ms' }} />
-      <rect x="228" y="84" width="30" height="24" rx="2" {...line} className={s.draw} style={{ '--delay': '900ms' }} />
-      <rect x="238" y="172" width="30" height="24" rx="2" {...line} className={s.draw} style={{ '--delay': '1000ms' }} />
-      <rect x="200" y="210" width="30" height="24" rx="2" {...line} className={s.draw} style={{ '--delay': '1100ms' }} opacity=".45" />
-      <Star x={60} y={84} r={4} delay={1200} />
+      <Glow x={150} y={152} r={70} delay={200} />
+      <Draw d="M150 120a32 32 0 1 1 0 64a32 32 0 1 1 0-64Z" fill={NIGHT} />
+      <Moon x={146} y={150} r={13} delay={600} />
+      <Draw d="M124 132 90 104" delay={500} />
+      <Draw d="M178 134l34-28" delay={600} />
+      <Dash d="M150 184v38" dash="2 5" delay={700} />
+      <path d="M124 132 90 104M178 134l34-28" fill="none" stroke={STAR} strokeWidth="2.2" strokeLinecap="round" strokeDasharray="0.1 10" className={s.travel} />
+      <Draw d="M82 82a16 16 0 1 1 0 32a16 16 0 1 1 0-32Z" fill="rgba(246,240,222,.05)" delay={800} />
+      <Draw d="M220 84a16 16 0 1 1 0 32a16 16 0 1 1 0-32Z" fill="rgba(246,240,222,.05)" delay={900} />
+      <Draw d="M150 222a16 16 0 1 1 0 32a16 16 0 1 1 0-32Z" weight={fine} delay={1000} />
+      <Star x={82} y={98} r={6} delay={1150} />
+      <Star x={220} y={100} r={6} delay={1250} />
+      <Star x={150} y={238} r={5} delay={1350} color="rgba(246,240,222,.35)" />
     </>
   ),
-  // done: the wall, the rail, the works hung, the moon up
+  // done: three choices settled into orbit around a tick
   () => (
     <>
-      <Moon x={222} y={56} r={20} delay={800} />
-      <Draw d="M30 126h240" />
-      <Draw d="M74 166 92 126l18 40M138 160l14-34 14 34M196 170l18-44 18 44" delay={200} />
-      <rect x="62" y="166" width="60" height="46" rx="3" {...line} className={s.draw} style={{ '--delay': '400ms' }} />
-      <rect x="128" y="160" width="48" height="60" rx="3" {...line} className={s.draw} style={{ '--delay': '520ms' }} />
-      <rect x="184" y="170" width="60" height="44" rx="3" {...line} className={s.draw} style={{ '--delay': '640ms' }} />
-      <circle cx="92" cy="189" r="5" fill={STAR} className={s.pop} style={{ '--delay': '1000ms', transformOrigin: '92px 189px' }} />
-      <path d="M140 210c8-14 16-20 24-24" fill="none" stroke={STAR} strokeWidth="2.2" strokeLinecap="round" className={s.fade} style={{ '--delay': '1100ms' }} />
-      <path d="M194 204l12-12 10 9 10-12 10 15" fill="none" stroke={STAR} strokeWidth="2" strokeLinejoin="round" className={s.fade} style={{ '--delay': '1200ms' }} />
-      <Star x={54} y={70} r={5} delay={1300} />
-      <Star x={150} y={44} r={3.5} delay={1400} />
+      <Glow x={150} y={150} r={64} delay={300} />
+      <Draw d="M150 86a64 64 0 1 1 0 128a64 64 0 1 1 0-128Z" weight={{ ...fine, opacity: 0.35 }} />
+      <Draw d="M150 112a38 38 0 1 1 0 76a38 38 0 1 1 0-76Z" fill="rgba(246,240,222,.05)" delay={200} />
+      <path d="M133 151l12 12 23-25" fill="none" stroke={STAR} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" pathLength="1" className={s.draw} style={{ '--delay': '700ms' }} />
+      {[[150, 86], [205, 182], [95, 182]].map(([x, y], i) => (
+        <g key={i}>
+          <circle cx={x} cy={y} r="9" fill={STAR} opacity=".16" className={s.pop} style={{ '--delay': `${1000 + i * 140}ms`, transformOrigin: `${x}px ${y}px` }} />
+          <circle cx={x} cy={y} r="4" fill={STAR} className={s.pop} style={{ '--delay': `${1000 + i * 140}ms`, transformOrigin: `${x}px ${y}px` }} />
+        </g>
+      ))}
+      <Moon x={238} y={62} r={14} delay={500} />
+      <Star x={66} y={84} r={4.5} delay={1500} />
     </>
   ),
 ];

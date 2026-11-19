@@ -71,7 +71,7 @@ export function FolderPicker({ open, onClose, onPick, initialPath, kind = 'expor
     <Dialog open={open} onClose={onClose} size="lg" className={s.dialog} title={t(`folders.title.${kind}`)}
       footer={<>
         <div className={s.choice}>
-          <Icon name={files ? 'frame' : sel?.library ? 'database' : 'folder'} size={16} />
+          <Icon name={files ? 'snapshot' : sel?.library ? 'database' : 'folder'} size={16} />
           <span className={s.choicePath} title={selected ?? ''}>{files ? selFile?.path ?? '' : selected ?? ''}</span>
           {kind === 'database' && sel?.library && <span className={s.tag}>{t('folders.library')}</span>}
         </div>
@@ -140,7 +140,7 @@ export function FolderPicker({ open, onClose, onPick, initialPath, kind = 'expor
             {dir?.files?.map((f) => (
               <li key={f.path} role="option" aria-selected={selected === f.path} className={`${s.row} ${s.fileRow}`} data-on={selected === f.path}
                 onClick={() => setSelected(f.path)} onDoubleClick={() => pick(f.path)}>
-                <Icon name="frame" size={18} className={s.fileIcon} />
+                <Icon name="snapshot" size={18} className={s.fileIcon} />
                 <span className={s.name}>{f.name}</span>
                 <span className={`${s.fileMeta} num`}>{fmt.dateSmart(f.modifiedAt)} · {fmt.bytes(f.size)}</span>
               </li>
