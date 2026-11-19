@@ -1,26 +1,39 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { resolveArt } from '../art/banners/banners.js';
 import { Icon } from '../icons/Icon.jsx';
 import s from './media.module.css';
 
 const cx = (...a) => a.filter(Boolean).join(' ');
 
-/** An image that fades in once decoded. `focus` = { x, y } in 0–1 picks the crop. */
+/** Images already shown in this session: they appear at once, without the fade. */
+const shown = new Set();
+
+/**
+ * An image that fades in once decoded. `focus` = { x, y } in 0–1 picks the crop.
+ * An image already shown in this session appears at once: coming back to a page its covers are simply there, and a
+ * cover morphing between pages (home card ↔ author banner, post card ↔ post cover) finds its other end visible.
+ */
 export function Picture({ src, alt = '', ratio, fit = 'cover', focus, className, imgClassName, eager, style, children, onLoad }) {
   const url = resolveArt(src);
-  const [loadedUrl, setLoadedUrl] = useState(null);
+  const [loadedUrl, setLoadedUrl] = useState(() => (shown.has(url) ? url : null));
+  const img = useRef(null);
+  useLayoutEffect(() => {
+    const el = img.current;
+    if (shown.has(url) || (el?.complete && el.naturalWidth > 0)) { shown.add(url); setLoadedUrl(url); }
+  }, [url]);
   return (
     <div className={cx(s.pic, loadedUrl === url && s.loaded, className)} style={{ aspectRatio: ratio, ...style }}>
       {url && (
         <img
           key={url}
+          ref={img}
           src={url}
           alt={alt}
           className={imgClassName}
           loading={eager ? 'eager' : 'lazy'}
           decoding="async"
           draggable={false}
-          onLoad={(e) => { setLoadedUrl(url); onLoad?.(e); }}
+          onLoad={(e) => { shown.add(url); setLoadedUrl(url); onLoad?.(e); }}
           style={{ objectFit: fit, objectPosition: focus ? `${(focus.x * 100).toFixed(1)}% ${(focus.y * 100).toFixed(1)}%` : undefined }}
         />
       )}

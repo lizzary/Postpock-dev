@@ -1,6 +1,9 @@
 import { Icon } from '../icons/Icon.jsx';
 
-/** A platform's mark: its colour and initial (or the icon chosen for a custom platform). */
+/**
+ * A platform's mark: its colour, and one of
+ *   null — the name's initial · 'letter:X' — a chosen letter · an icon name from the project set.
+ */
 export function PlatformMark({ platform, size = 22, className }) {
   if (!platform) return null;
   const style = {
@@ -11,7 +14,9 @@ export function PlatformMark({ platform, size = 22, className }) {
   };
   return (
     <span className={className} style={style} aria-hidden="true">
-      {platform.icon ? <Icon name={platform.icon} size={Math.round(size * 0.62)} stroke={1.9} /> : platform.name.slice(0, 1).toUpperCase()}
+      {platform.icon?.startsWith('letter:') ? platform.icon.slice(7)
+        : platform.icon ? <Icon name={platform.icon} size={Math.round(size * 0.62)} stroke={1.9} />
+          : (platform.name || '?').slice(0, 1).toUpperCase()}
     </span>
   );
 }

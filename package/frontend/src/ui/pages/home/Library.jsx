@@ -1,7 +1,7 @@
 import { ViewTransition, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useOverlays } from '../../../app/shell.jsx';
 import { libraryActions } from '../../../bridge/index.js';
-import { Link, paths } from '../../../app/router.jsx';
+import { Link, cameBack, paths } from '../../../app/router.jsx';
 import { useT } from '../../../i18n/index.jsx';
 import { useFormat } from '../../lib/format.js';
 import { Icon } from '../../icons/Icon.jsx';
@@ -90,11 +90,45 @@ export function Library({ home }) {
 
   const current = groups.find((g) => g.platform.id === tab);
   useEffect(() => { if (tab !== 'all' && !current) setTabState('all'); }, [tab, current]);
+  // where to land when going back to the overview: the platform you were on, at the height you left it
+  const returnTo = useRef(null);
+  const placing = useRef(false);                    // a tab was switched: place the page once the new content is in
+  const [flash, setFlash] = useState(null);
+  // back in the overview it is simply there again: its entrance stays off until you leave it (switching an
+  // animation back on would replay it)
+  const [quiet, setQuiet] = useState(cameBack);
   const setTab = (id) => {
+    if (id === tab) return;
+    if (id === 'all') returnTo.current = { id: tab, offset: returnTo.current?.id === tab ? returnTo.current.offset : NAV_H + 8 };
+    else if (tab === 'all') returnTo.current = null;
     setTabState(id); remembered.set(id);
-    const y = top.current.getBoundingClientRect().top + window.scrollY - 64;
-    if (window.scrollY > y) window.scrollTo({ top: y, behavior: 'smooth' });
+    setQuiet(id === 'all');
+    placing.current = true;
   };
+  /** "See all" from the overview: remember where that platform sat on screen, so coming back puts it there again. */
+  const seeAll = (id, el) => {
+    const offset = Math.max(NAV_H + 8, el.getBoundingClientRect().top);
+    setTab(id);
+    returnTo.current = { id, offset };
+  };
+  useLayoutEffect(() => {
+    if (!placing.current) return undefined;          // only after a switch — never on mount, so page restores win
+    placing.current = false;
+    const back = returnTo.current;
+    if (tab !== 'all' || !back) {
+      // another view of the library: start it right under the bars, if the page was further down
+      const y = top.current.getBoundingClientRect().top + window.scrollY - 64;
+      if (window.scrollY > y) window.scrollTo({ top: y });
+      return undefined;
+    }
+    returnTo.current = null;
+    const el = body.current?.querySelector(`[data-wing="${CSS.escape(back.id)}"]`);
+    if (!el) return undefined;
+    window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - back.offset });
+    setFlash(back.id);
+    const id = setTimeout(() => setFlash(null), 1400);
+    return () => clearTimeout(id);
+  }, [tab]);
 
   if (!home.authors.length && !groups.length) {
     return (
@@ -115,10 +149,11 @@ export function Library({ home }) {
       <div ref={top} />
       <Navigator groups={groups} tab={tab} setTab={setTab} total={home.authors.length} matched={searching ? total : null}
         query={query} setQuery={setQuery} sort={view.sort} setSort={(sort) => setView({ sort })} onReorder={reorderPlatforms} />
-      <div ref={body} className={s.wings}>
+      <div ref={body} className={s.wings} data-quiet={quiet}>
         {current
-          ? <Wing group={current} full onReorder={reorderAuthors} />
-          : visible.map((g, gi) => <Wing key={g.platform.id} group={g} index={gi} limit={searching ? null : cols} onMore={() => setTab(g.platform.id)} onReorder={reorderAuthors} />)}
+          ? <Wing group={current} full onReorder={reorderAuthors} onBack={() => setTab('all')} />
+          : visible.map((g, gi) => <Wing key={g.platform.id} group={g} index={gi} limit={searching ? null : cols} flash={flash === g.platform.id}
+              onMore={(el) => seeAll(g.platform.id, el)} onReorder={reorderAuthors} />)}
         {!visible.length && <Empty compact title={t('picker.none')} />}
       </div>
     </section>
@@ -140,18 +175,27 @@ function Navigator({ groups, tab, setTab, total, matched, query, setQuery, sort,
     ro.observe(strip.current);
     return () => ro.disconnect();
   }, [groups.length]);
-  useEffect(() => { strip.current?.querySelector('[data-on="true"]')?.scrollIntoView({ block: 'nearest', inline: 'nearest', behavior: 'smooth' }); }, [tab]);
+  // bring the chosen tab into view by scrolling the strip only (scrollIntoView would move the page too)
+  useEffect(() => {
+    const el = strip.current, on = el?.querySelector('[data-on="true"]');
+    if (!on) return;
+    const pad = 40, left = on.offsetLeft - el.offsetLeft, right = left + on.offsetWidth;
+    if (left < el.scrollLeft + pad) el.scrollTo({ left: left - pad, behavior: 'smooth' });
+    else if (right > el.scrollLeft + el.clientWidth - pad) el.scrollTo({ left: right - el.clientWidth + pad, behavior: 'smooth' });
+  }, [tab]);
   const nudge = (d) => strip.current.scrollBy({ left: d * strip.current.clientWidth * 0.7, behavior: 'smooth' });
   const drag = useReorder({ listRef: strip, scrollRef: strip, mode: 'row', axis: 'x', onDrop: onReorder });
 
   return (
     <div className={s.nav}>
+      {/* "All" stays put while the platforms scroll beside it: the way back is always one click */}
+      <button type="button" role="tab" aria-selected={tab === 'all'} data-on={tab === 'all'} className={`${s.tab} ${s.allTab}`} onClick={() => setTab('all')}>
+        <span className={s.allMark}><Icon name="layers" size={12} /></span>{t('home.allPlatforms')}<span className={`${s.tabCount} num`}>{matched ?? total}</span>
+      </button>
+      <span className={s.tabSep} />
       <div className={s.tabsWrap} data-left={edges.left} data-right={edges.right}>
         {edges.left && <button type="button" className={`${s.edge} ${s.edgeL}`} onClick={() => nudge(-1)} aria-label={t('common.prev')}><Icon name="chevron-left" size={16} /></button>}
         <div ref={strip} className={s.tabs} role="tablist" onScroll={measure}>
-          <button type="button" role="tab" aria-selected={tab === 'all'} data-on={tab === 'all'} className={s.tab} onClick={() => setTab('all')}>
-            <span className={s.allMark}><Icon name="layers" size={12} /></span>{t('home.allPlatforms')}<span className={`${s.tabCount} num`}>{matched ?? total}</span>
-          </button>
           {groups.map((g) => (
             <button key={g.platform.id} type="button" role="tab" aria-selected={tab === g.platform.id} data-on={tab === g.platform.id} data-empty={matched != null && !g.shown.length}
               className={s.tab} onClick={() => setTab(g.platform.id)} {...drag.handle(g.platform.id)}>
@@ -215,7 +259,7 @@ function PlatformIndex({ groups, tab, onPick, onReorder }) {
 }
 
 /** One platform: a header, then its authors (one row in the overview, all of them on its own tab). */
-function Wing({ group, full, limit, onMore, onReorder, index = 0 }) {
+function Wing({ group, full, limit, onMore, onBack, onReorder, flash, index = 0 }) {
   const t = useT();
   const { open } = useOverlays();
   const gridRef = useRef(null);
@@ -234,7 +278,10 @@ function Wing({ group, full, limit, onMore, onReorder, index = 0 }) {
     },
   });
   return (
-    <div className={`${s.wing} ${full ? s.full : ''}`} style={{ '--delay': `${Math.min(index, 8) * 50}ms` }}>
+    <div className={`${s.wing} ${full ? s.full : ''}`} style={{ '--delay': `${Math.min(index, 8) * 50}ms` }} data-wing={p.id} data-flash={!!flash}>
+      {full && onBack && (
+        <button type="button" className={s.back} onClick={onBack}><Icon name="arrow-left" size={15} />{t('home.backToAll')}</button>
+      )}
       <div className={s.wingHead}>
         <PlatformMark platform={p} size={full ? 30 : 24} />
         <h2 className={s.wingName}>{p.name}</h2>
@@ -243,8 +290,9 @@ function Wing({ group, full, limit, onMore, onReorder, index = 0 }) {
           ? <span className={s.conn} data-status={p.connection}><StatusDot status={p.connection} />{t(`status.${p.connection}`)}</span>
           : <span className={s.wingMeta}>{t('status.custom')}</span>}
         <span className={s.wingActions}>
+          <IconButton icon="edit" size="sm" label={t('editor.editPlatform')} className={s.editPlatform} onClick={() => open('editPlatform', { platform: p })} />
           <button type="button" className={s.textBtn} onClick={() => open('newAuthor', { platformId: p.id })}><Icon name="plus" size={14} />{t('home.addAuthor')}</button>
-          {hidden > 0 && <button type="button" className={s.more} onClick={onMore}>{t('home.seeAll', { n: shown.length })}<Icon name="arrow-right" size={14} /></button>}
+          {hidden > 0 && <button type="button" className={s.more} onClick={(e) => onMore(e.currentTarget.closest('[data-wing]'))}>{t('home.seeAll', { n: shown.length })}<Icon name="arrow-right" size={14} /></button>}
         </span>
       </div>
       <div ref={gridRef} className={s.grid}>

@@ -26,6 +26,7 @@ export const libraryActions = {
   createAuthor: api.library.createAuthor,
   updateAuthor: api.library.updateAuthor,
   createPlatform: api.library.createPlatform,
+  updatePlatform: api.library.updatePlatform,
   createPost: api.library.createPost,
   updatePost: api.library.updatePost,
   openFile: api.library.openFile,

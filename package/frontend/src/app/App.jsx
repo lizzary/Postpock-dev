@@ -38,21 +38,26 @@ function Gate() {
   const [phase, setPhase] = useState(locked ? 'login' : 'library');
   if (locked && phase !== 'login') setPhase('login');
   if (phase === 'login') return <LoginPage opening={!locked} onOpened={() => setPhase('library')} />;
+  return <Library />;
+}
+
+function Library() {
+  // one route for the bar and the page: they change in the same commit, so the page transition sees both new
+  const route = useRoute();
   return (
     <OverlayProvider>
       <PageMetaProvider>
         <Shortcuts />
         <FirstRun />
-        <TopBar />
-        <Pages />
+        <TopBar route={route} />
+        <Pages route={route} />
         <Overlays />
       </PageMetaProvider>
     </OverlayProvider>
   );
 }
 
-function Pages() {
-  const route = useRoute();
+function Pages({ route }) {
   useLayoutEffect(() => { window.scrollTo(0, route.scroll ?? 0); }, [route.key, route.scroll]);
   return (
     <PageErrorBoundary resetKey={route.key}>

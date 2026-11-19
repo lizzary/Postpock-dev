@@ -80,8 +80,10 @@ export { newEdits };
 
 // ------------------------------------------------------------------ views of the data
 /** Platforms in the user's order (set by dragging on the home page); ones never placed keep their default order. */
+/** Built-in platforms with the user's own name, colour, icon and links on top (their connector stays the same). */
+const builtins = (L) => BUILTIN_PLATFORMS.map((p) => ({ ...p, ...L.platformEdits?.[p.id] }));
 function platformsOf(L) {
-  const all = [...BUILTIN_PLATFORMS, ...L.platforms];
+  const all = [...builtins(L), ...L.platforms];
   const order = L.prefs.platformOrder;
   if (!order?.length) return all;
   const at = new Map(order.map((id, i) => [id, i]));
@@ -92,7 +94,7 @@ const authorUrl = (L, a) => a.url || (platformById(L, a.platformId)?.authorUrl |
 
 function platformView(L, p) {
   const c = p.kind === 'builtin' ? L.connections[p.id] : null;
-  return { id: p.id, name: p.name, kind: p.kind, color: p.color, site: p.site, icon: p.icon ?? null, connection: c ? c.status : null };
+  return { id: p.id, name: p.name, kind: p.kind, color: p.color, site: p.site, authorUrl: p.authorUrl ?? '', icon: p.icon ?? null, connection: c ? c.status : null };
 }
 function authorView(L, a) {
   const posts = L.postsByAuthor.get(a.id) ?? [];
@@ -264,6 +266,20 @@ export function createPlatform(input) {
   return platformView(L, p);
 }
 
+const PLATFORM_FIELDS = ['name', 'color', 'icon', 'site', 'authorUrl'];
+/** Name, colour, icon and links of any platform. Custom ones change in place; built-in ones keep the change beside them. */
+export function updatePlatform(id, patch) {
+  const L = lib();
+  const clean = Object.fromEntries(PLATFORM_FIELDS.filter((k) => k in patch).map((k) => [k, typeof patch[k] === 'string' && k !== 'icon' ? patch[k].trim() : patch[k] ?? null]));
+  if ('name' in clean && !clean.name) return null;
+  const custom = L.platforms.find((p) => p.id === id);
+  if (custom) Object.assign(custom, clean);
+  else if (BUILTIN_PLATFORMS.some((p) => p.id === id)) L.platformEdits = { ...L.platformEdits, [id]: { ...L.platformEdits?.[id], ...clean } };
+  else return null;
+  emit('library'); emit('connections');
+  return platformView(L, platformById(L, id));
+}
+
 /** A post added by hand: blocks may carry new files ({ upload: { url, name, ext, size, width, height } }). */
 export function createPost(authorId, input) {
   const L = lib();
@@ -360,7 +376,7 @@ export function search(text, domains) {
 // ------------------------------------------------------------------ connections
 export function getConnections() {
   const L = lib();
-  return BUILTIN_PLATFORMS.map((p) => ({ platformId: p.id, name: p.name, color: p.color, ...L.connections[p.id] }));
+  return builtins(L).map((p) => ({ platformId: p.id, name: p.name, color: p.color, icon: p.icon ?? null, ...L.connections[p.id] }));
 }
 export function startLogin(platformId) {
   const c = lib().connections[platformId];

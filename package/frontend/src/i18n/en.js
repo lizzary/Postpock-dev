@@ -22,7 +22,7 @@ export default {
     addAuthor: 'New author', addPlatform: 'New custom platform',
     emptyTitle: 'Nothing here yet', emptyBody: 'Add an author, or connect a platform and choose who to save from the Sync page.',
     emptyPlatform: 'No authors on this platform yet',
-    allPlatforms: 'All', platformIndex: 'All platforms', findAuthor: 'Find an author', findPlatform: 'Find a platform', seeAll: 'See all {n}',
+    allPlatforms: 'All', backToAll: 'All platforms', platformIndex: 'All platforms', findAuthor: 'Find an author', findPlatform: 'Find a platform', seeAll: 'See all {n}',
     sort: { recent: 'Recently updated', name: 'By name', posts: 'Most posts', custom: 'Custom order' },
     customOrder: 'Switched to custom order', dragHint: 'Drag to reorder platforms',
   },
@@ -43,11 +43,11 @@ export default {
   fields: {
     banner: 'Banner', avatar: 'Avatar', cover: 'Cover', coverAuto: 'Cropped from the banner', coverHint: 'Drag the frame to choose the crop', name: 'Name', platform: 'Platform', handle: 'Platform ID',
     url: 'Profile link', bio: 'Bio', builtIn: 'Built-in banners', title: 'Title', subtitle: 'Subtitle / summary', published: 'Published', archived: 'Saved',
-    platformName: 'Platform name', color: 'Colour', icon: 'Icon', site: 'Website', authorUrl: 'Author page pattern',
+    platformName: 'Platform name', color: 'Colour', icon: 'Icon', iconLetters: 'Letters', iconSymbols: 'Symbols', iconInitial: 'Use the name’s first letter', site: 'Website', authorUrl: 'Author page pattern',
   },
   editor: {
     newAuthor: 'New author', createAuthor: 'Create author', authorCreated: 'Added “{name}”',
-    newPlatform: 'New custom platform', createPlatform: 'Create platform', platformCreated: 'Added “{name}”',
+    newPlatform: 'New custom platform', createPlatform: 'Create platform', platformCreated: 'Added “{name}”', editPlatform: 'Edit platform', platformSaved: 'Platform saved',
     addPost: 'Add post', createPost: 'Add', postCreated: 'Post added',
     content: 'Content', addBlock: 'Add content', blocks: { paragraph: 'Text', image: 'Image', video: 'Video', audio: 'Audio', file: 'File', linkCard: 'Link card' },
     textPlaceholder: 'Write something…', insertLink: 'Insert link', linkUrl: 'Link address', linkText: 'Link text', cardUrl: 'Web address or a post link', cardTitle: 'Card title', cardDesc: 'Summary',

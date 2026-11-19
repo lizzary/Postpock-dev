@@ -154,3 +154,5 @@
   .single .card { flex-direction: column; align-items: stretch; }
   .single .coverWrap { width: 100%; }
 }
+
+.grid[data-quiet='true'] .card { animation: none; }

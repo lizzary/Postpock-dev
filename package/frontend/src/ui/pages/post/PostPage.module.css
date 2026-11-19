@@ -8,8 +8,8 @@
   overflow: hidden;
   border-radius: var(--r-3);
   box-shadow: 0 0 0 1px var(--line), var(--shadow-2);
-  animation: rise 700ms var(--ease-out) both;
 }
+/* no entrance of its own: arriving from a card the cover morphs into place, and otherwise the page rises in whole */
 .cover { width: 100%; }
 .coverEdit {
   position: absolute;

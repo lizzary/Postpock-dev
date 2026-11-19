@@ -34,7 +34,7 @@ export function ConnectionsPanel({ focus }) {
           return (
             <li key={c.platformId} className={`${s.item} ${focus === c.platformId ? s.focus : ''} ${flow ? s.inFlow : ''}`} data-status={c.status}>
               <div className={s.row}>
-                <PlatformMark platform={{ name: c.name, color: c.color }} size={34} />
+                <PlatformMark platform={{ name: c.name, color: c.color, icon: c.icon }} size={34} />
                 <div className={s.info}>
                   <div className={s.name}>{c.name}</div>
                   <div className={s.status}>

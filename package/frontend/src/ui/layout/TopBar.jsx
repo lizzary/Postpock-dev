@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useAccess, useConnections, useTasks } from '../../bridge/index.js';
 import { useOverlays, usePageMetaValue } from '../../app/shell.jsx';
 import { Link, paths } from '../../app/router.jsx';
@@ -15,24 +15,46 @@ import s from './TopBar.module.css';
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
-export function TopBar() {
-  const t = useT();
-  const meta = usePageMetaValue();
-  const { open } = useOverlays();
-  const [solid, setSolid] = useState(false);
+/** Pages that open under artwork (the bar sits on it until scrolled past). */
+const OVER_ART = { home: true, author: true, post: false };
+const metaKey = (m) => (m.scope === 'home' ? 'home' : m.postId ? `post:${m.postId}` : `author:${m.authorId}`);
 
-  useEffect(() => {
-    const on = () => setSolid(!meta.overArt || window.scrollY > Math.max(40, meta.artHeight - 120));
+export function TopBar({ route }) {
+  const t = useT();
+  const live = usePageMetaValue();
+  // The page reports itself (art height…) only after it has rendered. In the render that switches pages the bar
+  // goes by the route instead — kind of page, and the scroll it will land on — plus what the page said last time.
+  const seen = useRef(new Map());
+  if (metaKey(live) === route.key) seen.current.set(route.key, live);
+  const meta = metaKey(live) === route.key ? live
+    : seen.current.get(route.key) ?? { scope: route.name === 'home' ? 'home' : 'author', overArt: OVER_ART[route.name], artHeight: 600 };
+  const predicted = metaKey(live) !== route.key;
+  const { open } = useOverlays();
+  const solidAt = (y) => !meta.overArt || y > Math.max(40, meta.artHeight - 120);
+  const [solidLive, setSolid] = useState(false);
+  const solid = predicted ? solidAt(route.scroll ?? 0) : solidLive;
+  // A new page sets the bar at once: the page transition already cross-fades it, and the bar's own fade would be
+  // caught half-way in the transition's picture of the new page. Scrolling within a page keeps the fade.
+  const [instant, setInstant] = useState(false);
+  const page = useRef(null);
+
+  useLayoutEffect(() => {
+    const key = route.key;
+    const fresh = page.current !== null && page.current !== key;
+    page.current = key;
+    const on = () => setSolid(solidAt(window.scrollY));
+    let r1 = 0, r2 = 0;
+    if (fresh) { setInstant(true); r1 = requestAnimationFrame(() => { r2 = requestAnimationFrame(() => setInstant(false)); }); }
     on();
     window.addEventListener('scroll', on, { passive: true });
-    return () => window.removeEventListener('scroll', on);
-  }, [meta.overArt, meta.artHeight]);
+    return () => { window.removeEventListener('scroll', on); cancelAnimationFrame(r1); cancelAnimationFrame(r2); };
+  }, [meta.overArt, meta.artHeight, route.key]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const art = !solid;
   const scope = meta.scope === 'home' ? { scope: 'home' } : { scope: 'author', authorId: meta.authorId, postId: meta.postId, postDay: meta.postDay };
 
   return (
-    <header className={`${s.bar} ${solid ? s.solid : s.onArt}`} style={{ viewTransitionName: 'topbar' }} data-vt-name="">
+    <header className={`${s.bar} ${solid ? s.solid : s.onArt}`} style={{ viewTransitionName: 'topbar' }} data-vt-name="" data-instant={instant || predicted || undefined}>
       <div className={s.inner}>
         <div className={s.left}>
           <Link to={paths.home()} className={s.brand} aria-label="PostPock">

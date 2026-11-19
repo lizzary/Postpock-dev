@@ -182,3 +182,6 @@
   .word { display: none; }
   .search { width: auto; flex: 1; }
 }
+
+/* switching pages: the bar takes its new look at once (see TopBar) */
+.bar[data-instant], .bar[data-instant] * { transition: none !important; }

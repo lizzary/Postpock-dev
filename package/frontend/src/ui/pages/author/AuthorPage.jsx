@@ -1,7 +1,7 @@
 import { ViewTransition, useLayoutEffect, useRef, useState, useTransition } from 'react';
 import { useAuthor, useAuthorView, usePosts, useTasks } from '../../../bridge/index.js';
 import { useOverlays, usePageMeta } from '../../../app/shell.jsx';
-import { Link, paths } from '../../../app/router.jsx';
+import { Link, cameBack, paths } from '../../../app/router.jsx';
 import { useT } from '../../../i18n/index.jsx';
 import { useFormat } from '../../lib/format.js';
 import { Icon } from '../../icons/Icon.jsx';
@@ -14,6 +14,8 @@ import { useTaskText } from '../../features/tasks/TasksPanel.jsx';
 import s from './AuthorPage.module.css';
 
 const PAGE_SIZE = 12;
+/** The page of posts each author was left on; back / forward reopens it (a fresh visit starts at page 1). */
+const lastPage = new Map();
 const TASK_ICON = { export: 'export', snapshot: 'snapshot' };
 
 export function AuthorPage({ id }) {
@@ -122,8 +124,14 @@ function Posts({ author }) {
   const t = useT();
   const { open } = useOverlays();
   const [view, setView] = useAuthorView(author.id);
-  const [page, setPage] = useState(1);
+  const [page, setPageState] = useState(() => {
+    if (!cameBack()) lastPage.delete(author.id);      // a fresh visit starts over
+    return lastPage.get(author.id) ?? 1;
+  });
+  const setPage = (p) => { lastPage.set(author.id, p); setPageState(p); };
   const [pending, startTransition] = useTransition();
+  // back from a post the cards are simply there, so its cover can settle into its card; a new page still deals them in
+  const [quiet, setQuiet] = useState(cameBack);
   const head = useRef(null);
   const sentinel = useRef(null);
   const [stuck, setStuck] = useState(false);
@@ -137,7 +145,7 @@ function Posts({ author }) {
   const data = usePosts(author.id, { page, pageSize: PAGE_SIZE, sort });
 
   const go = (p) => {
-    startTransition(() => setPage(p));
+    startTransition(() => { setPage(p); setQuiet(false); });
     const top = head.current.getBoundingClientRect().top + window.scrollY - 90;
     if (window.scrollY > top) window.scrollTo({ top, behavior: 'smooth' });
   };
@@ -149,7 +157,7 @@ function Posts({ author }) {
       <header ref={head} className={`${s.toolbar} ${stuck ? s.stuck : ''}`}>
         <h2 className={s.postsTitle}>{t('author.posts')}<span className={`${s.count} num`}>{data.total}</span></h2>
         <div className={s.tools}>
-          <Select size="sm" icon="sort" value={sort} options={sortOptions} label={t('author.sort.label')} onChange={(v) => { setView({ sort: v }); startTransition(() => setPage(1)); }} />
+          <Select size="sm" icon="sort" value={sort} options={sortOptions} label={t('author.sort.label')} onChange={(v) => { setView({ sort: v }); startTransition(() => { setPage(1); setQuiet(false); }); }} />
           <Segmented size="sm" iconOnly label={t('author.layout.label')} value={columns} onChange={(v) => setView({ columns: v })}
             options={[{ value: 1, label: t('author.layout.single'), icon: 'cols-1' }, { value: 2, label: t('author.layout.double'), icon: 'cols-2' }]} />
           <Button variant="primary" size="sm" icon="plus" onClick={() => open('addPost', { authorId: author.id })}>{t('author.addPost')}</Button>
@@ -162,7 +170,7 @@ function Posts({ author }) {
             <Button variant="primary" icon="plus" onClick={() => open('addPost', { authorId: author.id })}>{t('author.addPost')}</Button>
           </>}>{t('author.emptyBody')}</Empty>
         : (
-          <div className={`${s.grid} ${columns === 1 ? s.single : s.double} ${pending ? s.pending : ''}`} key={`${page}-${sort}`}>
+          <div className={`${s.grid} ${columns === 1 ? s.single : s.double} ${pending ? s.pending : ''}`} key={`${page}-${sort}`} data-quiet={quiet}>
             {data.items.map((post, i) => <PostCard key={post.id} post={post} index={i} single={columns === 1} />)}
           </div>
         )}

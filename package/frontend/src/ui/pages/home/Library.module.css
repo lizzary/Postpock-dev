@@ -168,3 +168,34 @@
 .card[data-dragging] { animation: none; background: var(--bg-raised); box-shadow: 0 0 0 8px var(--bg-raised), 0 0 0 9px var(--line-2), var(--shadow-3); cursor: grabbing; }
 .card[data-dragging] .coverWrap { transform: none; }
 .indexHint { display: flex; align-items: center; gap: 6px; padding: 6px 14px 10px; font-size: 11.5px; color: var(--ink-3); }
+
+/* editing a platform is quiet: it shows when the wing is hovered or focused */
+.editPlatform { opacity: 0; transition: opacity var(--dur-2), background-color var(--dur-1), color var(--dur-1); }
+.wing:hover .editPlatform, .editPlatform:focus-visible { opacity: 1; }
+@media (hover: none) { .editPlatform { opacity: 1; } }
+
+/* "All" sits outside the scrolling strip */
+.allTab { flex-shrink: 0; }
+.tabSep { width: 1px; height: 18px; margin: 0 4px; flex-shrink: 0; background: var(--line-2); }
+/* one platform on its own: the way back to the overview */
+.back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px -8px;
+  padding: 4px 10px 4px 8px;
+  border-radius: var(--r-2);
+  font-size: 13px;
+  color: var(--ink-3);
+  transition: background-color var(--dur-1), color var(--dur-1);
+}
+.back:hover { background: var(--hover); color: var(--ink); }
+.back svg { transition: transform 260ms var(--ease-out); }
+.back:hover svg { transform: translateX(-3px); }
+/* back in the overview: the platform you came from glows once, so the eye finds its place */
+.wing[data-flash='true'] .wingHead { animation: found 1.4s var(--ease-out); border-radius: var(--r-3); }
+@keyframes found { 0% { background: var(--star-soft); box-shadow: 0 0 0 8px var(--star-soft); } 100% { background: transparent; box-shadow: 0 0 0 8px transparent; } }
+/* one platform fills at least a screen under the bars, so a short list never pulls the page back up into the painting */
+.full { min-height: calc(100vh - var(--bar-h) - 54px); }
+/* coming back is not arriving: the overview is simply there again, without its entrance */
+.wings[data-quiet='true'] .wing, .wings[data-quiet='true'] .card, .wings[data-quiet='true'] .addTile { animation: none; }

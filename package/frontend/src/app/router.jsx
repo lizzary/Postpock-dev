@@ -11,9 +11,16 @@ function parse(hash) {
 const keyOf = (r) => (r.name === 'home' ? 'home' : `${r.name}:${r.id}`);
 
 // Scroll positions per entry: a new navigation starts at the top, back/forward returns where you were.
+// The app restores them itself: the browser's own restoration would scroll the page being left (to wherever the
+// next page's position happens to fit), and the page transition would then start from the wrong place.
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 const scrolls = new Map();
 let pushing = false;
 let current = location.hash || '#/';
+let returned = false;
+
+/** Was the page now showing reached by back / forward? Pages that return should not replay their entrance. */
+export const cameBack = () => returned;
 
 export function navigate(path) {
   const next = `#${path}`;
@@ -29,6 +36,7 @@ export function useRoute() {
     const onChange = () => {
       if (!pushing) scrolls.set(current, window.scrollY);
       const scroll = pushing ? 0 : scrolls.get(location.hash || '#/') ?? 0;
+      returned = !pushing;
       pushing = false;
       current = location.hash || '#/';
       const r = parse(location.hash);

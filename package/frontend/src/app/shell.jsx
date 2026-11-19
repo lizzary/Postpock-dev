@@ -1,5 +1,5 @@
 // Shared app state for the UI: which overlay is open, and what the current page tells the top bar.
-import { createContext, use, useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, use, useCallback, useLayoutEffect, useMemo, useState } from 'react';
 
 // ------------------------------------------------------------------ overlays
 const OverlayCtx = createContext(null);
@@ -30,5 +30,6 @@ export const usePageMetaValue = () => use(MetaCtx).meta;
 export function usePageMeta(meta) {
   const { setMeta } = use(MetaCtx);
   const json = JSON.stringify(meta);
-  useEffect(() => { setMeta(JSON.parse(json)); }, [json, setMeta]);
+  // in the same commit as the page, so the page transition already sees the top bar the new page wants
+  useLayoutEffect(() => { setMeta(JSON.parse(json)); }, [json, setMeta]);
 }

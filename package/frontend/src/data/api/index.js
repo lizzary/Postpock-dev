@@ -112,6 +112,8 @@ export const library = {
   createAuthor: (input) => call('write', () => backend.createAuthor(input)),
   updateAuthor: (id, patch) => call('write', () => backend.updateAuthor(id, patch)),
   createPlatform: (input) => call('write', () => backend.createPlatform(input)),
+  /** patch: any of { name, color, icon, site, authorUrl }; icon is null (the name's initial), 'letter:X' or an icon name */
+  updatePlatform: (id, patch) => call('write', () => backend.updatePlatform(id, patch)),
   createPost: (authorId, input) => call('write', () => backend.createPost(authorId, input)),
   updatePost: (id, patch) => call('write', () => backend.updatePost(id, patch)),
   openFile: (fileId) => call('write', () => backend.openFile(fileId)),

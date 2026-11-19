@@ -9,6 +9,7 @@ const load = {
   settings: () => import('./settings/SettingsDialog.jsx'),
   newAuthor: () => import('./editors/AuthorDialog.jsx'),
   newPlatform: () => import('./editors/PlatformDialog.jsx'),
+  editPlatform: () => import('./editors/PlatformDialog.jsx'),
   addPost: () => import('./editors/PostComposer.jsx'),
   backup: () => import('./backup/BackupSheet.jsx'),
   mcp: () => import('./mcp/McpSheet.jsx'),

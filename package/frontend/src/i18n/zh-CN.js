@@ -22,7 +22,7 @@ export default {
     addAuthor: '新增作者', addPlatform: '新增自定义平台',
     emptyTitle: '这里还是空的', emptyBody: '新增一位作者，或者连接平台后从同步页面选择要保存的作者。',
     emptyPlatform: '这个平台还没有作者',
-    allPlatforms: '全部', platformIndex: '全部平台', findAuthor: '查找作者', findPlatform: '查找平台', seeAll: '查看全部 {n} 位',
+    allPlatforms: '全部', backToAll: '返回全部平台', platformIndex: '全部平台', findAuthor: '查找作者', findPlatform: '查找平台', seeAll: '查看全部 {n} 位',
     sort: { recent: '最近更新', name: '按名字', posts: '文章最多', custom: '自定义顺序' },
     customOrder: '已切换为自定义顺序', dragHint: '拖动可调整平台顺序',
   },
@@ -43,11 +43,11 @@ export default {
   fields: {
     banner: '头图', avatar: '头像', cover: '封面', coverAuto: '从头图裁剪', coverHint: '拖动选框调整裁剪位置', name: '名字', platform: '平台', handle: '平台 ID',
     url: '主页链接', bio: '简介', builtIn: '默认头图', title: '标题', subtitle: '副标题 / 简介', published: '发布日期', archived: '存档日期',
-    platformName: '平台名称', color: '颜色', icon: '图标', site: '网址', authorUrl: '作者主页格式',
+    platformName: '平台名称', color: '颜色', icon: '图标', iconLetters: '字母', iconSymbols: '图形', iconInitial: '使用名称的首字', site: '网址', authorUrl: '作者主页格式',
   },
   editor: {
     newAuthor: '新增作者', createAuthor: '创建作者', authorCreated: '已新增作者「{name}」',
-    newPlatform: '新增自定义平台', createPlatform: '创建平台', platformCreated: '已新增平台「{name}」',
+    newPlatform: '新增自定义平台', createPlatform: '创建平台', platformCreated: '已新增平台「{name}」', editPlatform: '编辑平台', platformSaved: '已保存平台信息',
     addPost: '添加文章', createPost: '添加', postCreated: '已添加文章',
     content: '正文', addBlock: '添加内容', blocks: { paragraph: '文本', image: '图片', video: '视频', audio: '音频', file: '文件', linkCard: '链接卡' },
     textPlaceholder: '写点什么…', insertLink: '插入链接', linkUrl: '链接地址', linkText: '链接文字', cardUrl: '链接地址或站内文章链接', cardTitle: '卡片标题', cardDesc: '简介',

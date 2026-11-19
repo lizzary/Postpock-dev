@@ -81,6 +81,10 @@ Semantic colour rules used across the app — keep them consistent in new featur
 - **Server mode / pending restart**: running `--ok`; saved but waiting for a restart `--warn`, breathing.
 - **Platforms** carry their own brand-softened colour (`platform.color`), used only for the small platform mark and
   colour dots — never as a large surface.
+- **Platform marks** (`PlatformMark`): the colour plus either the name's initial (`icon: null`), a chosen letter
+  (`'letter:A'` … `'letter:Z'`, Plus Jakarta 720) or a symbol from the icon set. The symbol list lives in
+  `PlatformDialog.jsx`; a new platform symbol must read on the coloured square at 16 px (check it there, not only on
+  paper). In the picker, the chosen cell wears the platform's own colour.
 
 The painting's own palette (night blue `#1d2f6b`, Prussian `#142a4f`, cobalt `#2f5fb3`, sky turquoise `#6fa3b8`,
 star yellow `#f1d35a`, moon orange `#e8a53a`, cream `#efe6c4`) is where the UI palette comes from. New art should
